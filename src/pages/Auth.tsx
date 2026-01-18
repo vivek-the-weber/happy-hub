@@ -25,7 +25,7 @@ export default function Auth() {
 
   useEffect(() => {
     if (!loading && user) {
-      navigate('/dashboard');
+      navigate('/onboarding');
     }
   }, [user, loading, navigate]);
 
@@ -68,7 +68,7 @@ export default function Auth() {
           }
         } else {
           toast.success('Account created! Welcome to happy2buy 🎉');
-          navigate('/dashboard');
+          navigate('/onboarding');
         }
       } else {
         const { error } = await signIn(email, password);
@@ -80,7 +80,7 @@ export default function Auth() {
           }
         } else {
           toast.success('Welcome back!');
-          navigate('/dashboard');
+          navigate('/onboarding');
         }
       }
     } finally {

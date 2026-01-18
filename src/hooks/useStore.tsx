@@ -8,6 +8,7 @@ export interface Store {
   name: string;
   slug: string;
   bio: string | null;
+  city: string | null;
   payment_instructions: string | null;
   whatsapp_number: string | null;
   created_at: string;
@@ -133,25 +134,38 @@ export function useOrderItems(orderId: string | undefined) {
   });
 }
 
+export function useCheckSlugAvailability(slug: string) {
+  return useQuery({
+    queryKey: ['check-slug', slug],
+    queryFn: async () => {
+      if (!slug || slug.length < 3) return null;
+      const { data, error } = await supabase
+        .from('stores')
+        .select('id')
+        .eq('slug', slug)
+        .maybeSingle();
+      if (error) throw error;
+      return data === null; // true if available, false if taken
+    },
+    enabled: slug.length >= 3,
+  });
+}
+
 export function useCreateStore() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
 
   return useMutation({
-    mutationFn: async (data: { name: string; bio?: string; whatsapp_number?: string; payment_instructions?: string }) => {
+    mutationFn: async (data: { name: string; slug: string; city: string; bio?: string; whatsapp_number?: string; payment_instructions?: string }) => {
       if (!user) throw new Error('Not authenticated');
-      
-      const slug = data.name
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, '-')
-        .replace(/(^-|-$)/g, '') + '-' + Math.random().toString(36).substring(2, 6);
 
       const { data: store, error } = await supabase
         .from('stores')
         .insert({
           owner_id: user.id,
           name: data.name,
-          slug,
+          slug: data.slug,
+          city: data.city,
           bio: data.bio || null,
           whatsapp_number: data.whatsapp_number || null,
           payment_instructions: data.payment_instructions || null,
@@ -164,6 +178,7 @@ export function useCreateStore() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['my-store'] });
+      queryClient.invalidateQueries({ queryKey: ['check-slug'] });
     },
   });
 }

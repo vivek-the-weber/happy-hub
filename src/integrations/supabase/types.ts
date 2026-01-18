@@ -177,6 +177,7 @@ export type Database = {
       stores: {
         Row: {
           bio: string | null
+          city: string | null
           created_at: string
           id: string
           name: string
@@ -188,6 +189,7 @@ export type Database = {
         }
         Insert: {
           bio?: string | null
+          city?: string | null
           created_at?: string
           id?: string
           name: string
@@ -199,6 +201,7 @@ export type Database = {
         }
         Update: {
           bio?: string | null
+          city?: string | null
           created_at?: string
           id?: string
           name?: string
