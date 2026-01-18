@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Package, ShoppingBag, Settings, Link as LinkIcon, Copy, Check, Plus } from 'lucide-react';
+import { Package, ShoppingBag, Settings, Link as LinkIcon, Copy, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -11,19 +11,18 @@ import { Header } from '@/components/Header';
 import { ProductManager } from '@/components/dashboard/ProductManager';
 import { OrderList } from '@/components/dashboard/OrderList';
 import { useAuth } from '@/hooks/useAuth';
-import { useMyStore, useCreateStore, useUpdateStore } from '@/hooks/useStore';
+import { useMyStore, useUpdateStore } from '@/hooks/useStore';
 import { toast } from 'sonner';
 
 export default function Dashboard() {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
   const { data: store, isLoading: storeLoading } = useMyStore();
-  const createStore = useCreateStore();
   const updateStore = useUpdateStore();
 
-  const [isCreating, setIsCreating] = useState(false);
   const [storeName, setStoreName] = useState('');
   const [storeBio, setStoreBio] = useState('');
+  const [storeCity, setStoreCity] = useState('');
   const [whatsappNumber, setWhatsappNumber] = useState('');
   const [paymentInstructions, setPaymentInstructions] = useState('');
   const [copied, setCopied] = useState(false);
@@ -38,31 +37,11 @@ export default function Dashboard() {
     if (store) {
       setStoreName(store.name);
       setStoreBio(store.bio || '');
+      setStoreCity(store.city || '');
       setWhatsappNumber(store.whatsapp_number || '');
       setPaymentInstructions(store.payment_instructions || '');
     }
   }, [store]);
-
-  const handleCreateStore = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!storeName.trim()) {
-      toast.error('Please enter a store name');
-      return;
-    }
-
-    try {
-      await createStore.mutateAsync({
-        name: storeName,
-        bio: storeBio,
-        whatsapp_number: whatsappNumber,
-        payment_instructions: paymentInstructions,
-      });
-      toast.success('Store created! 🎉');
-      setIsCreating(false);
-    } catch (error: any) {
-      toast.error(error.message || 'Failed to create store');
-    }
-  };
 
   const handleUpdateStore = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -73,6 +52,7 @@ export default function Dashboard() {
         id: store.id,
         name: storeName,
         bio: storeBio || null,
+        city: storeCity || null,
         whatsapp_number: whatsappNumber || null,
         payment_instructions: paymentInstructions || null,
       });
@@ -103,95 +83,10 @@ export default function Dashboard() {
     );
   }
 
-  // No store - show create form
-  if (!store && !isCreating) {
-    return (
-      <div className="min-h-screen bg-background">
-        <Header />
-        <div className="container py-16 max-w-md mx-auto text-center">
-          <h1 className="text-2xl font-bold mb-4">Welcome to happy2buy!</h1>
-          <p className="text-muted-foreground mb-8">
-            Create your store to start selling. It only takes a minute.
-          </p>
-          <Button onClick={() => setIsCreating(true)} size="lg">
-            <Plus className="h-4 w-4 mr-2" />
-            Create Your Store
-          </Button>
-        </div>
-      </div>
-    );
-  }
-
-  // Creating store
-  if (isCreating && !store) {
-    return (
-      <div className="min-h-screen bg-background">
-        <Header />
-        <div className="container py-8 max-w-md mx-auto">
-          <h1 className="text-2xl font-bold mb-6">Create Your Store</h1>
-          
-          <form onSubmit={handleCreateStore} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="storeName">Store Name *</Label>
-              <Input
-                id="storeName"
-                placeholder="e.g. Sarah's Crafts"
-                value={storeName}
-                onChange={(e) => setStoreName(e.target.value)}
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="bio">Short Description</Label>
-              <Textarea
-                id="bio"
-                placeholder="Tell customers what you sell..."
-                value={storeBio}
-                onChange={(e) => setStoreBio(e.target.value)}
-                rows={2}
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="whatsapp">WhatsApp Number</Label>
-              <Input
-                id="whatsapp"
-                type="tel"
-                placeholder="+1234567890"
-                value={whatsappNumber}
-                onChange={(e) => setWhatsappNumber(e.target.value)}
-              />
-              <p className="text-xs text-muted-foreground">
-                Customers can contact you on WhatsApp
-              </p>
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="payment">Payment Instructions</Label>
-              <Textarea
-                id="payment"
-                placeholder="e.g. Bank transfer to: Account 1234..."
-                value={paymentInstructions}
-                onChange={(e) => setPaymentInstructions(e.target.value)}
-                rows={3}
-              />
-              <p className="text-xs text-muted-foreground">
-                Shown to customers after they place an order
-              </p>
-            </div>
-            
-            <div className="flex gap-2 pt-4">
-              <Button type="button" variant="outline" onClick={() => setIsCreating(false)}>
-                Cancel
-              </Button>
-              <Button type="submit" disabled={createStore.isPending} className="flex-1">
-                {createStore.isPending ? 'Creating...' : 'Create Store'}
-              </Button>
-            </div>
-          </form>
-        </div>
-      </div>
-    );
+  // No store - redirect to onboarding
+  if (!store) {
+    navigate('/onboarding');
+    return null;
   }
 
   // Has store - show dashboard
@@ -270,6 +165,15 @@ export default function Dashboard() {
                       value={storeBio}
                       onChange={(e) => setStoreBio(e.target.value)}
                       rows={2}
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="editCity">City</Label>
+                    <Input
+                      id="editCity"
+                      value={storeCity}
+                      onChange={(e) => setStoreCity(e.target.value)}
                     />
                   </div>
                   
