@@ -295,16 +295,3 @@ export function useUpdateOrderStatus() {
   });
 }
 
-export function useFeaturedStores() {
-  return useQuery({
-    queryKey: ['featured-stores'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('stores')
-        .select('*')
-        .limit(6);
-      if (error) throw error;
-      return data as Store[];
-    },
-  });
-}
