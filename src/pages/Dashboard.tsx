@@ -83,9 +83,15 @@ export default function Dashboard() {
     );
   }
 
-  // No store - redirect to onboarding
+  // Redirect to onboarding if no store (handled in useEffect below)
+  useEffect(() => {
+    if (!authLoading && !storeLoading && user && !store) {
+      navigate('/onboarding');
+    }
+  }, [user, store, authLoading, storeLoading, navigate]);
+
+  // Still loading or redirecting
   if (!store) {
-    navigate('/onboarding');
     return null;
   }
 
