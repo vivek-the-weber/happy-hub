@@ -1,15 +1,25 @@
+import { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { MessageCircle, Truck, Package } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Header } from '@/components/Header';
 import { ProductCard } from '@/components/ProductCard';
-import { useStoreBySlug, useStoreProducts } from '@/hooks/useStore';
+import { ProductDetailModal } from '@/components/ProductDetailModal';
+import { useStoreBySlug, useStoreProducts, Product } from '@/hooks/useStore';
 
 export default function StorePage() {
   const { slug } = useParams<{ slug: string }>();
   const { data: store, isLoading: storeLoading } = useStoreBySlug(slug || '');
   const { data: products, isLoading: productsLoading } = useStoreProducts(store?.id);
+  
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [modalOpen, setModalOpen] = useState(false);
+
+  const handleProductClick = (product: Product) => {
+    setSelectedProduct(product);
+    setModalOpen(true);
+  };
 
   if (storeLoading) {
     return (
@@ -104,11 +114,19 @@ export default function StorePage() {
                 key={product.id} 
                 product={product} 
                 storeName={store.name}
+                onClick={() => handleProductClick(product)}
               />
             ))}
           </div>
         )}
       </section>
+
+      <ProductDetailModal
+        product={selectedProduct}
+        storeName={store.name}
+        open={modalOpen}
+        onOpenChange={setModalOpen}
+      />
     </div>
   );
 }
