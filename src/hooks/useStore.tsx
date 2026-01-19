@@ -176,8 +176,9 @@ export function useCreateStore() {
       if (error) throw error;
       return store as Store;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['my-store'] });
+    onSuccess: (store) => {
+      // Set cache with the owner_id key to avoid race conditions
+      queryClient.setQueryData(['my-store', store.owner_id], store);
       queryClient.invalidateQueries({ queryKey: ['check-slug'] });
     },
   });

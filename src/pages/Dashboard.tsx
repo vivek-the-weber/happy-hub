@@ -17,7 +17,7 @@ import { toast } from 'sonner';
 export default function Dashboard() {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
-  const { data: store, isLoading: storeLoading } = useMyStore();
+  const { data: store, isLoading: storeLoading, isFetched: storeFetched } = useMyStore();
   const updateStore = useUpdateStore();
 
   const [storeName, setStoreName] = useState('');
@@ -27,12 +27,21 @@ export default function Dashboard() {
   const [paymentInstructions, setPaymentInstructions] = useState('');
   const [copied, setCopied] = useState(false);
 
+  // Redirect to auth if not logged in
   useEffect(() => {
     if (!authLoading && !user) {
-      navigate('/auth');
+      navigate('/auth', { replace: true });
     }
   }, [user, authLoading, navigate]);
 
+  // Redirect to onboarding if no store (only after store query is settled)
+  useEffect(() => {
+    if (!authLoading && user && storeFetched && store === null) {
+      navigate('/onboarding', { replace: true });
+    }
+  }, [user, store, authLoading, storeFetched, navigate]);
+
+  // Populate form when store loads
   useEffect(() => {
     if (store) {
       setStoreName(store.name);
@@ -42,12 +51,6 @@ export default function Dashboard() {
       setPaymentInstructions(store.payment_instructions || '');
     }
   }, [store]);
-
-  useEffect(() => {
-    if (!authLoading && !storeLoading && user && !store) {
-      navigate('/onboarding');
-    }
-  }, [user, store, authLoading, storeLoading, navigate]);
 
   const handleUpdateStore = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -78,7 +81,8 @@ export default function Dashboard() {
     }
   };
 
-  if (authLoading || storeLoading) {
+  // Show loading while auth or store is loading
+  if (authLoading || storeLoading || (user && !storeFetched)) {
     return (
       <div className="min-h-screen bg-background">
         <Header />
@@ -89,9 +93,7 @@ export default function Dashboard() {
     );
   }
 
-  // Redirect to onboarding if no store (handled in useEffect above)
-
-  // Still loading or redirecting
+  // No store yet (redirect will happen via useEffect)
   if (!store) {
     return null;
   }
@@ -110,7 +112,7 @@ export default function Dashboard() {
                 <div>
                   <p className="text-sm font-medium">Your store link</p>
                   <p className="text-xs text-muted-foreground">
-                    {window.location.origin}/store/{store?.slug}
+                    {window.location.origin}/store/{store.slug}
                   </p>
                 </div>
               </div>
@@ -139,11 +141,11 @@ export default function Dashboard() {
           </TabsList>
 
           <TabsContent value="products">
-            <ProductManager store={store!} />
+            <ProductManager store={store} />
           </TabsContent>
 
           <TabsContent value="orders">
-            <OrderList store={store!} />
+            <OrderList store={store} />
           </TabsContent>
 
           <TabsContent value="settings">

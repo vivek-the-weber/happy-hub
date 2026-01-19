@@ -23,7 +23,7 @@ export default function Onboarding() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user, loading: authLoading } = useAuth();
-  const { data: store, isLoading: storeLoading } = useMyStore();
+  const { data: store, isLoading: storeLoading, isFetched: storeFetched } = useMyStore();
   const createStore = useCreateStore();
 
   const [storeName, setStoreName] = useState('');
@@ -39,16 +39,16 @@ export default function Onboarding() {
   // Redirect if not logged in
   useEffect(() => {
     if (!authLoading && !user) {
-      navigate('/auth');
+      navigate('/auth', { replace: true });
     }
   }, [user, authLoading, navigate]);
 
-  // Redirect if already has store
+  // Redirect if already has store (only after store query is settled)
   useEffect(() => {
-    if (!storeLoading && store) {
-      navigate('/dashboard');
+    if (!authLoading && user && storeFetched && store !== null) {
+      navigate('/dashboard', { replace: true });
     }
-  }, [store, storeLoading, navigate]);
+  }, [store, authLoading, user, storeFetched, navigate]);
 
   // Debounce username check
   useEffect(() => {
@@ -103,6 +103,7 @@ export default function Onboarding() {
       toast.error('Please wait while we check username availability');
       return;
     }
+    if (!user) return;
 
     setIsSubmitting(true);
 
@@ -113,10 +114,10 @@ export default function Onboarding() {
         city,
         whatsapp_number: whatsappNumber,
       });
-      // Set the cache directly to avoid race condition
-      queryClient.setQueryData(['my-store', user?.id], newStore);
+      // Set the cache directly with the owner_id to avoid race condition
+      queryClient.setQueryData(['my-store', newStore.owner_id], newStore);
       toast.success('Your store is ready! 🎉');
-      navigate('/dashboard');
+      navigate('/dashboard', { replace: true });
     } catch (error: any) {
       if (error.message?.includes('duplicate') || error.message?.includes('unique')) {
         toast.error('This username is already taken. Please choose another.');
@@ -128,7 +129,8 @@ export default function Onboarding() {
     }
   };
 
-  if (authLoading || storeLoading) {
+  // Show loading while auth or store is loading
+  if (authLoading || storeLoading || (user && !storeFetched)) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-pulse text-muted-foreground">Loading...</div>
