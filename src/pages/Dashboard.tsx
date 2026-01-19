@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Package, ShoppingBag, Settings, Link as LinkIcon, Copy, Check } from 'lucide-react';
+import { Package, ShoppingBag, Settings, Link as LinkIcon, Copy, Check, Truck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -10,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Header } from '@/components/Header';
 import { ProductManager } from '@/components/dashboard/ProductManager';
 import { OrderList } from '@/components/dashboard/OrderList';
+import { ShippingSettings } from '@/components/dashboard/ShippingSettings';
 import { useAuth } from '@/hooks/useAuth';
 import { useMyStore, useUpdateStore } from '@/hooks/useStore';
 import { toast } from 'sonner';
@@ -134,6 +135,10 @@ export default function Dashboard() {
               <ShoppingBag className="h-4 w-4" />
               Orders
             </TabsTrigger>
+            <TabsTrigger value="shipping" className="gap-2">
+              <Truck className="h-4 w-4" />
+              Shipping
+            </TabsTrigger>
             <TabsTrigger value="settings" className="gap-2">
               <Settings className="h-4 w-4" />
               Settings
@@ -146,6 +151,10 @@ export default function Dashboard() {
 
           <TabsContent value="orders">
             <OrderList store={store} />
+          </TabsContent>
+
+          <TabsContent value="shipping">
+            <ShippingSettings store={store} />
           </TabsContent>
 
           <TabsContent value="settings">

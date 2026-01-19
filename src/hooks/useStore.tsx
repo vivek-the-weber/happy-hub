@@ -11,6 +11,9 @@ export interface Store {
   city: string | null;
   payment_instructions: string | null;
   whatsapp_number: string | null;
+  estimated_delivery_time: string | null;
+  shipping_charge: number;
+  free_shipping: boolean;
   created_at: string;
   updated_at: string;
 }
