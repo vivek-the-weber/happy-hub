@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/hooks/useAuth';
 import { useMyStore, useCreateStore, useCheckSlugAvailability } from '@/hooks/useStore';
+import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
 const storeNameSchema = z.string().min(2, 'Store name must be at least 2 characters').max(50, 'Store name must be less than 50 characters');
@@ -20,6 +21,7 @@ const whatsappSchema = z.string().min(10, 'Please enter a valid phone number').m
 
 export default function Onboarding() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { user, loading: authLoading } = useAuth();
   const { data: store, isLoading: storeLoading } = useMyStore();
   const createStore = useCreateStore();
@@ -105,12 +107,14 @@ export default function Onboarding() {
     setIsSubmitting(true);
 
     try {
-      await createStore.mutateAsync({
+      const newStore = await createStore.mutateAsync({
         name: storeName,
         slug: username,
         city,
         whatsapp_number: whatsappNumber,
       });
+      // Set the cache directly to avoid race condition
+      queryClient.setQueryData(['my-store'], newStore);
       toast.success('Your store is ready! 🎉');
       navigate('/dashboard');
     } catch (error: any) {
