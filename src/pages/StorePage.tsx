@@ -1,5 +1,6 @@
 import { useParams } from 'react-router-dom';
-import { MessageCircle } from 'lucide-react';
+import { MessageCircle, Truck, Package } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Header } from '@/components/Header';
 import { ProductCard } from '@/components/ProductCard';
@@ -58,6 +59,30 @@ export default function StorePage() {
               <MessageCircle className="h-4 w-4 mr-2" />
               Contact on WhatsApp
             </Button>
+          )}
+          
+          {/* Shipping Info */}
+          {(store.free_shipping || store.shipping_charge || store.estimated_delivery_time) && (
+            <div className="flex flex-wrap gap-2 mt-4">
+              {store.free_shipping ? (
+                <Badge variant="secondary" className="gap-1">
+                  <Truck className="h-3 w-3" />
+                  Free Shipping
+                </Badge>
+              ) : store.shipping_charge ? (
+                <Badge variant="secondary" className="gap-1">
+                  <Truck className="h-3 w-3" />
+                  ₹{store.shipping_charge} shipping
+                </Badge>
+              ) : null}
+              
+              {store.estimated_delivery_time && (
+                <Badge variant="outline" className="gap-1">
+                  <Package className="h-3 w-3" />
+                  Delivers in {store.estimated_delivery_time}
+                </Badge>
+              )}
+            </div>
           )}
         </div>
       </section>
