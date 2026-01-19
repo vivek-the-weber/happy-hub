@@ -114,7 +114,7 @@ export default function Onboarding() {
         whatsapp_number: whatsappNumber,
       });
       // Set the cache directly to avoid race condition
-      queryClient.setQueryData(['my-store'], newStore);
+      queryClient.setQueryData(['my-store', user?.id], newStore);
       toast.success('Your store is ready! 🎉');
       navigate('/dashboard');
     } catch (error: any) {

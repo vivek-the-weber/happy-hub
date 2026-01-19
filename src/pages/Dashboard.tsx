@@ -43,6 +43,12 @@ export default function Dashboard() {
     }
   }, [store]);
 
+  useEffect(() => {
+    if (!authLoading && !storeLoading && user && !store) {
+      navigate('/onboarding');
+    }
+  }, [user, store, authLoading, storeLoading, navigate]);
+
   const handleUpdateStore = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!store) return;
@@ -83,12 +89,7 @@ export default function Dashboard() {
     );
   }
 
-  // Redirect to onboarding if no store (handled in useEffect below)
-  useEffect(() => {
-    if (!authLoading && !storeLoading && user && !store) {
-      navigate('/onboarding');
-    }
-  }, [user, store, authLoading, storeLoading, navigate]);
+  // Redirect to onboarding if no store (handled in useEffect above)
 
   // Still loading or redirecting
   if (!store) {
