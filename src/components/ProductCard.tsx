@@ -8,9 +8,10 @@ import { toast } from 'sonner';
 interface ProductCardProps {
   product: Product;
   storeName: string;
+  onClick?: () => void;
 }
 
-export function ProductCard({ product, storeName }: ProductCardProps) {
+export function ProductCard({ product, storeName, onClick }: ProductCardProps) {
   const { addToCart } = useCart();
 
   // Use first image from image_urls array, fallback to image_url for backward compatibility
@@ -37,7 +38,7 @@ export function ProductCard({ product, storeName }: ProductCardProps) {
   };
 
   return (
-    <Card className="overflow-hidden group">
+    <Card className="overflow-hidden group cursor-pointer" onClick={onClick}>
       <div className="aspect-square bg-muted relative">
         {displayImage ? (
           <>
@@ -69,7 +70,10 @@ export function ProductCard({ product, storeName }: ProductCardProps) {
           {formatPrice(product.price)}
         </p>
         <Button 
-          onClick={handleAddToCart} 
+          onClick={(e) => {
+            e.stopPropagation();
+            handleAddToCart();
+          }} 
           disabled={!product.is_available}
           className="w-full"
           size="sm"
