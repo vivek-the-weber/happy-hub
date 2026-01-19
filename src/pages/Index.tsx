@@ -2,11 +2,8 @@ import { Link } from 'react-router-dom';
 import { ArrowRight, Store, ShoppingBag, Share2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Header } from '@/components/Header';
-import { StoreCard } from '@/components/StoreCard';
-import { useFeaturedStores } from '@/hooks/useStore';
 
 export default function Index() {
-  const { data: stores, isLoading } = useFeaturedStores();
 
   return (
     <div className="min-h-screen bg-background">
@@ -69,18 +66,6 @@ export default function Index() {
           </div>
         </div>
       </section>
-
-      {/* Featured Stores */}
-      {!isLoading && stores && stores.length > 0 && (
-        <section className="container py-16 border-t">
-          <h2 className="text-2xl font-bold mb-8 text-center">Browse Stores</h2>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {stores.map((store) => (
-              <StoreCard key={store.id} store={store} />
-            ))}
-          </div>
-        </section>
-      )}
 
       {/* Footer */}
       <footer className="border-t py-8">
