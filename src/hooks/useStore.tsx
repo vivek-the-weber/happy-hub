@@ -22,6 +22,7 @@ export interface Product {
   description: string | null;
   price: number;
   image_url: string | null;
+  image_urls: string[];
   is_available: boolean;
   created_at: string;
   updated_at: string;
@@ -210,7 +211,7 @@ export function useCreateProduct() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (data: { store_id: string; name: string; description?: string; price: number; image_url?: string }) => {
+    mutationFn: async (data: { store_id: string; name: string; description?: string; price: number; image_url?: string; image_urls?: string[] }) => {
       const { data: product, error } = await supabase
         .from('products')
         .insert({
@@ -219,6 +220,7 @@ export function useCreateProduct() {
           description: data.description || null,
           price: data.price,
           image_url: data.image_url || null,
+          image_urls: data.image_urls || [],
         })
         .select()
         .single();
