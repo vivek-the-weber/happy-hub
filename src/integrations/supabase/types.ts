@@ -182,10 +182,13 @@ export type Database = {
           bio: string | null
           city: string | null
           created_at: string
+          estimated_delivery_time: string | null
+          free_shipping: boolean | null
           id: string
           name: string
           owner_id: string
           payment_instructions: string | null
+          shipping_charge: number | null
           slug: string
           updated_at: string
           whatsapp_number: string | null
@@ -194,10 +197,13 @@ export type Database = {
           bio?: string | null
           city?: string | null
           created_at?: string
+          estimated_delivery_time?: string | null
+          free_shipping?: boolean | null
           id?: string
           name: string
           owner_id: string
           payment_instructions?: string | null
+          shipping_charge?: number | null
           slug: string
           updated_at?: string
           whatsapp_number?: string | null
@@ -206,10 +212,13 @@ export type Database = {
           bio?: string | null
           city?: string | null
           created_at?: string
+          estimated_delivery_time?: string | null
+          free_shipping?: boolean | null
           id?: string
           name?: string
           owner_id?: string
           payment_instructions?: string | null
+          shipping_charge?: number | null
           slug?: string
           updated_at?: string
           whatsapp_number?: string | null
