@@ -13,12 +13,16 @@ interface ProductCardProps {
 export function ProductCard({ product, storeName }: ProductCardProps) {
   const { addToCart } = useCart();
 
+  // Use first image from image_urls array, fallback to image_url for backward compatibility
+  const displayImage = product.image_urls?.[0] || product.image_url;
+  const imageCount = product.image_urls?.length || (product.image_url ? 1 : 0);
+
   const handleAddToCart = () => {
     addToCart({
       productId: product.id,
       productName: product.name,
       productPrice: product.price,
-      productImage: product.image_url,
+      productImage: displayImage,
       storeId: product.store_id,
       storeName,
     });
@@ -35,12 +39,19 @@ export function ProductCard({ product, storeName }: ProductCardProps) {
   return (
     <Card className="overflow-hidden group">
       <div className="aspect-square bg-muted relative">
-        {product.image_url ? (
-          <img
-            src={product.image_url}
-            alt={product.name}
-            className="w-full h-full object-cover"
-          />
+        {displayImage ? (
+          <>
+            <img
+              src={displayImage}
+              alt={product.name}
+              className="w-full h-full object-cover"
+            />
+            {imageCount > 1 && (
+              <div className="absolute bottom-2 right-2 bg-black/60 text-white text-xs px-2 py-1 rounded-full">
+                +{imageCount - 1}
+              </div>
+            )}
+          </>
         ) : (
           <div className="w-full h-full flex items-center justify-center text-muted-foreground">
             No image

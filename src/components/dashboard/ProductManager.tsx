@@ -25,6 +25,9 @@ import {
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
+const MAX_IMAGES = 5;
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+
 interface ProductManagerProps {
   store: Store;
 }
@@ -40,14 +43,14 @@ export function ProductManager({ store }: ProductManagerProps) {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [price, setPrice] = useState('');
-  const [imageUrl, setImageUrl] = useState('');
+  const [imageUrls, setImageUrls] = useState<string[]>([]);
   const [isUploading, setIsUploading] = useState(false);
 
   const resetForm = () => {
     setName('');
     setDescription('');
     setPrice('');
-    setImageUrl('');
+    setImageUrls([]);
     setEditingProduct(null);
   };
 
@@ -57,7 +60,13 @@ export function ProductManager({ store }: ProductManagerProps) {
       setName(product.name);
       setDescription(product.description || '');
       setPrice(product.price.toString());
-      setImageUrl(product.image_url || '');
+      // Use image_urls if available, fallback to image_url for backward compatibility
+      const urls = product.image_urls?.length > 0 
+        ? product.image_urls 
+        : product.image_url 
+          ? [product.image_url] 
+          : [];
+      setImageUrls(urls);
     } else {
       resetForm();
     }
@@ -65,37 +74,60 @@ export function ProductManager({ store }: ProductManagerProps) {
   };
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
 
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error('Image must be less than 5MB');
+    const remainingSlots = MAX_IMAGES - imageUrls.length;
+    if (remainingSlots <= 0) {
+      toast.error(`Maximum ${MAX_IMAGES} images allowed`);
       return;
     }
 
+    const filesToUpload = Array.from(files).slice(0, remainingSlots);
+    
+    // Validate file sizes
+    for (const file of filesToUpload) {
+      if (file.size > MAX_FILE_SIZE) {
+        toast.error(`${file.name} is too large. Maximum size is 5MB per image.`);
+        return;
+      }
+    }
+
     setIsUploading(true);
+    const uploadedUrls: string[] = [];
+
     try {
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${store.id}/${Date.now()}.${fileExt}`;
+      for (const file of filesToUpload) {
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${store.id}/${Date.now()}_${Math.random().toString(36).substring(2)}.${fileExt}`;
 
-      const { error: uploadError } = await supabase.storage
-        .from('product-images')
-        .upload(fileName, file);
+        const { error: uploadError } = await supabase.storage
+          .from('product-images')
+          .upload(fileName, file);
 
-      if (uploadError) throw uploadError;
+        if (uploadError) throw uploadError;
 
-      const { data: { publicUrl } } = supabase.storage
-        .from('product-images')
-        .getPublicUrl(fileName);
+        const { data: { publicUrl } } = supabase.storage
+          .from('product-images')
+          .getPublicUrl(fileName);
 
-      setImageUrl(publicUrl);
-      toast.success('Image uploaded!');
+        uploadedUrls.push(publicUrl);
+      }
+
+      setImageUrls((prev) => [...prev, ...uploadedUrls]);
+      toast.success(`${uploadedUrls.length} image${uploadedUrls.length > 1 ? 's' : ''} uploaded!`);
     } catch (error: any) {
       toast.error('Failed to upload image');
       console.error(error);
     } finally {
       setIsUploading(false);
+      // Reset the input so the same file can be selected again
+      e.target.value = '';
     }
+  };
+
+  const removeImage = (index: number) => {
+    setImageUrls((prev) => prev.filter((_, i) => i !== index));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -119,7 +151,8 @@ export function ProductManager({ store }: ProductManagerProps) {
           name,
           description: description || null,
           price: priceNum,
-          image_url: imageUrl || null,
+          image_url: imageUrls[0] || null,
+          image_urls: imageUrls,
         });
         toast.success('Product updated!');
       } else {
@@ -128,7 +161,8 @@ export function ProductManager({ store }: ProductManagerProps) {
           name,
           description: description || undefined,
           price: priceNum,
-          image_url: imageUrl || undefined,
+          image_url: imageUrls[0] || undefined,
+          image_urls: imageUrls,
         });
         toast.success('Product added!');
       }
@@ -169,6 +203,10 @@ export function ProductManager({ store }: ProductManagerProps) {
     }).format(price);
   };
 
+  const getDisplayImage = (product: Product) => {
+    return product.image_urls?.[0] || product.image_url;
+  };
+
   if (isLoading) {
     return <div className="text-center py-8 text-muted-foreground">Loading products...</div>;
   }
@@ -189,7 +227,7 @@ export function ProductManager({ store }: ProductManagerProps) {
               Add Product
             </Button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent className="max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>{editingProduct ? 'Edit Product' : 'Add Product'}</DialogTitle>
               <DialogDescription>
@@ -232,43 +270,56 @@ export function ProductManager({ store }: ProductManagerProps) {
               </div>
               
               <div className="space-y-2">
-                <Label>Image</Label>
-                {imageUrl ? (
-                  <div className="relative w-24 h-24">
-                    <img 
-                      src={imageUrl} 
-                      alt="Product" 
-                      className="w-full h-full object-cover rounded-md"
-                    />
-                    <Button
-                      type="button"
-                      variant="destructive"
-                      size="icon"
-                      className="absolute -top-2 -right-2 h-6 w-6"
-                      onClick={() => setImageUrl('')}
-                    >
-                      <X className="h-3 w-3" />
-                    </Button>
-                  </div>
-                ) : (
-                  <div>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleImageUpload}
-                      className="hidden"
-                      id="imageUpload"
-                    />
-                    <label htmlFor="imageUpload">
-                      <Button type="button" variant="outline" asChild disabled={isUploading}>
-                        <span>
-                          <Upload className="h-4 w-4 mr-2" />
-                          {isUploading ? 'Uploading...' : 'Upload Image'}
-                        </span>
+                <Label>Images ({imageUrls.length}/{MAX_IMAGES})</Label>
+                <div className="grid grid-cols-5 gap-2">
+                  {imageUrls.map((url, index) => (
+                    <div key={index} className="relative aspect-square">
+                      <img 
+                        src={url} 
+                        alt={`Product ${index + 1}`} 
+                        className="w-full h-full object-cover rounded-md border"
+                      />
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="icon"
+                        className="absolute -top-2 -right-2 h-5 w-5"
+                        onClick={() => removeImage(index)}
+                      >
+                        <X className="h-3 w-3" />
                       </Button>
-                    </label>
-                  </div>
-                )}
+                    </div>
+                  ))}
+                  {imageUrls.length < MAX_IMAGES && (
+                    <div className="aspect-square">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        onChange={handleImageUpload}
+                        className="hidden"
+                        id="imageUpload"
+                        disabled={isUploading}
+                      />
+                      <label 
+                        htmlFor="imageUpload"
+                        className="flex flex-col items-center justify-center w-full h-full border-2 border-dashed rounded-md cursor-pointer hover:border-primary transition-colors"
+                      >
+                        {isUploading ? (
+                          <span className="text-xs text-muted-foreground">Uploading...</span>
+                        ) : (
+                          <>
+                            <Upload className="h-5 w-5 text-muted-foreground mb-1" />
+                            <span className="text-xs text-muted-foreground">Add</span>
+                          </>
+                        )}
+                      </label>
+                    </div>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Up to {MAX_IMAGES} images, 5MB max each
+                </p>
               </div>
               
               <div className="flex gap-2 pt-4">
@@ -300,60 +351,72 @@ export function ProductManager({ store }: ProductManagerProps) {
         </Card>
       ) : (
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {products?.map((product) => (
-            <Card key={product.id} className={!product.is_available ? 'opacity-60' : ''}>
-              <div className="aspect-square bg-muted relative">
-                {product.image_url ? (
-                  <img
-                    src={product.image_url}
-                    alt={product.name}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-muted-foreground text-sm">
-                    No image
-                  </div>
-                )}
-              </div>
-              <CardContent className="p-4">
-                <h3 className="font-medium text-sm line-clamp-1 mb-1">{product.name}</h3>
-                <p className="text-lg font-semibold text-primary mb-3">
-                  {formatPrice(product.price)}
-                </p>
-                
-                <div className="flex items-center justify-between gap-2 mb-3">
-                  <div className="flex items-center gap-2">
-                    <Switch
-                      checked={product.is_available}
-                      onCheckedChange={() => handleToggleAvailability(product)}
-                    />
-                    <span className="text-xs text-muted-foreground">
-                      {product.is_available ? 'Available' : 'Sold out'}
-                    </span>
-                  </div>
+          {products?.map((product) => {
+            const displayImage = getDisplayImage(product);
+            const imageCount = product.image_urls?.length || (product.image_url ? 1 : 0);
+            
+            return (
+              <Card key={product.id} className={!product.is_available ? 'opacity-60' : ''}>
+                <div className="aspect-square bg-muted relative">
+                  {displayImage ? (
+                    <>
+                      <img
+                        src={displayImage}
+                        alt={product.name}
+                        className="w-full h-full object-cover"
+                      />
+                      {imageCount > 1 && (
+                        <div className="absolute bottom-2 right-2 bg-black/60 text-white text-xs px-2 py-1 rounded-full">
+                          +{imageCount - 1}
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-muted-foreground text-sm">
+                      No image
+                    </div>
+                  )}
                 </div>
-                
-                <div className="flex gap-2">
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    className="flex-1"
-                    onClick={() => openDialog(product)}
-                  >
-                    <Edit2 className="h-3 w-3 mr-1" />
-                    Edit
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => handleDelete(product)}
-                  >
-                    <Trash2 className="h-3 w-3" />
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                <CardContent className="p-4">
+                  <h3 className="font-medium text-sm line-clamp-1 mb-1">{product.name}</h3>
+                  <p className="text-lg font-semibold text-primary mb-3">
+                    {formatPrice(product.price)}
+                  </p>
+                  
+                  <div className="flex items-center justify-between gap-2 mb-3">
+                    <div className="flex items-center gap-2">
+                      <Switch
+                        checked={product.is_available}
+                        onCheckedChange={() => handleToggleAvailability(product)}
+                      />
+                      <span className="text-xs text-muted-foreground">
+                        {product.is_available ? 'Available' : 'Sold out'}
+                      </span>
+                    </div>
+                  </div>
+                  
+                  <div className="flex gap-2">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="flex-1"
+                      onClick={() => openDialog(product)}
+                    >
+                      <Edit2 className="h-3 w-3 mr-1" />
+                      Edit
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => handleDelete(product)}
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       )}
     </div>
