@@ -3,7 +3,7 @@ import { useParams } from 'react-router-dom';
 import { MessageCircle, Truck, Package } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Header } from '@/components/Header';
+import { StoreHeader } from '@/components/StoreHeader';
 import { ProductCard } from '@/components/ProductCard';
 import { ProductDetailModal } from '@/components/ProductDetailModal';
 import { useStoreBySlug, useStoreProducts, Product } from '@/hooks/useStore';
@@ -25,10 +25,11 @@ export default function StorePage() {
   if (storeLoading) {
     return (
       <div className="min-h-screen bg-background">
-        <Header />
-        <div className="container py-16 text-center text-muted-foreground">
-          Loading store...
-        </div>
+        <header className="sticky top-0 z-50 bg-background/95 backdrop-blur border-b">
+          <div className="container flex items-center h-14">
+            <span className="text-muted-foreground">Loading store...</span>
+          </div>
+        </header>
       </div>
     );
   }
@@ -36,7 +37,11 @@ export default function StorePage() {
   if (!store) {
     return (
       <div className="min-h-screen bg-background">
-        <Header />
+        <header className="sticky top-0 z-50 bg-background/95 backdrop-blur border-b">
+          <div className="container flex items-center h-14">
+            <span className="text-lg font-bold">Store not found</span>
+          </div>
+        </header>
         <div className="container py-16 text-center">
           <h1 className="text-2xl font-bold mb-2">Store not found</h1>
           <p className="text-muted-foreground">This store doesn't exist or has been removed.</p>
@@ -56,7 +61,7 @@ export default function StorePage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Header />
+      <StoreHeader store={store} />
       
       {/* Store Header */}
       <section className="container py-8 border-b">

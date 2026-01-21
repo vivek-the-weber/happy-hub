@@ -10,6 +10,7 @@ export interface Store {
   bio: string | null;
   city: string | null;
   country: string;
+  logo_url: string | null;
   payment_instructions: string | null;
   whatsapp_number: string | null;
   estimated_delivery_time: string | null;
