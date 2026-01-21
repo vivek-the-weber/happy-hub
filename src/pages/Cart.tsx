@@ -11,6 +11,7 @@ import { Header } from '@/components/Header';
 import { useCart } from '@/hooks/useCart';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { formatPrice } from '@/lib/currency';
 
 export default function Cart() {
   const navigate = useNavigate();
@@ -24,21 +25,14 @@ export default function Cart() {
   const [customerAddress, setCustomerAddress] = useState('');
   const [customerNotes, setCustomerNotes] = useState('');
 
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(price);
-  };
-
   // Group cart items by store
   const itemsByStore = cart.reduce((acc, item) => {
     if (!acc[item.storeId]) {
-      acc[item.storeId] = { storeName: item.storeName, items: [] };
+      acc[item.storeId] = { storeName: item.storeName, storeCountry: item.storeCountry, items: [] };
     }
     acc[item.storeId].items.push(item);
     return acc;
-  }, {} as Record<string, { storeName: string; items: typeof cart }>);
+  }, {} as Record<string, { storeName: string; storeCountry: string; items: typeof cart }>);
 
   const handlePlaceOrder = async () => {
     if (!customerName.trim() || !customerPhone.trim() || !customerAddress.trim()) {
@@ -50,7 +44,7 @@ export default function Cart() {
 
     try {
       // Place orders for each store separately
-      for (const [storeId, { storeName, items }] of Object.entries(itemsByStore)) {
+      for (const [storeId, { storeName, storeCountry, items }] of Object.entries(itemsByStore)) {
         const storeTotal = items.reduce((sum, item) => sum + item.productPrice * item.quantity, 0);
 
         // Create the order
@@ -179,13 +173,13 @@ export default function Cart() {
               {cart.map((item) => (
                 <div key={item.productId} className="flex justify-between text-sm">
                   <span>{item.productName} × {item.quantity}</span>
-                  <span>{formatPrice(item.productPrice * item.quantity)}</span>
+                  <span>{formatPrice(item.productPrice * item.quantity, item.storeCountry)}</span>
                 </div>
               ))}
               <Separator className="my-2" />
               <div className="flex justify-between font-semibold">
                 <span>Total</span>
-                <span>{formatPrice(total)}</span>
+                <span>{formatPrice(total, cart[0]?.storeCountry || 'IN')}</span>
               </div>
             </CardContent>
           </Card>
@@ -262,7 +256,7 @@ export default function Cart() {
       <div className="container py-8 max-w-md mx-auto">
         <h1 className="text-2xl font-bold mb-6">Your Cart</h1>
         
-        {Object.entries(itemsByStore).map(([storeId, { storeName, items }]) => (
+        {Object.entries(itemsByStore).map(([storeId, { storeName, storeCountry, items }]) => (
           <Card key={storeId} className="mb-4">
             <CardHeader className="py-3">
               <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -288,7 +282,7 @@ export default function Cart() {
                   <div className="flex-1 min-w-0">
                     <h3 className="font-medium text-sm line-clamp-1">{item.productName}</h3>
                     <p className="text-sm text-primary font-semibold">
-                      {formatPrice(item.productPrice)}
+                      {formatPrice(item.productPrice, storeCountry)}
                     </p>
                     <div className="flex items-center gap-2 mt-2">
                       <Button 
@@ -327,7 +321,7 @@ export default function Cart() {
         <div className="border-t pt-4 mt-4">
           <div className="flex justify-between text-lg font-semibold mb-4">
             <span>Total</span>
-            <span>{formatPrice(total)}</span>
+            <span>{formatPrice(total, cart[0]?.storeCountry || 'IN')}</span>
           </div>
           <Button className="w-full" onClick={() => setIsCheckout(true)}>
             Proceed to Checkout

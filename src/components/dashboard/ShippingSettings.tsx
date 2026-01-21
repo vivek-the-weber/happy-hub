@@ -8,6 +8,7 @@ import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { useUpdateStore, Store } from '@/hooks/useStore';
 import { toast } from 'sonner';
+import { getCurrencySymbol } from '@/lib/currency';
 
 interface ShippingSettingsProps {
   store: Store;
@@ -98,7 +99,7 @@ export function ShippingSettings({ store }: ShippingSettingsProps) {
             <div className="space-y-2">
               <Label htmlFor="shippingCharge">Shipping Charge</Label>
               <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">₹</span>
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">{getCurrencySymbol(store.country)}</span>
                 <Input
                   id="shippingCharge"
                   type="number"

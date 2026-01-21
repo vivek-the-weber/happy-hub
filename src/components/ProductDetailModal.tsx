@@ -16,10 +16,13 @@ import {
 import { useCart } from '@/hooks/useCart';
 import { Product } from '@/hooks/useStore';
 import { toast } from 'sonner';
+import { formatPrice } from '@/lib/currency';
 
 interface ProductDetailModalProps {
   product: Product | null;
   storeName: string;
+  storeId: string;
+  storeCountry: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
@@ -27,6 +30,8 @@ interface ProductDetailModalProps {
 export function ProductDetailModal({
   product,
   storeName,
+  storeId,
+  storeCountry,
   open,
   onOpenChange,
 }: ProductDetailModalProps) {
@@ -46,19 +51,13 @@ export function ProductDetailModal({
       productId: product.id,
       productName: product.name,
       productPrice: product.price,
-      productImage: allImages[0],
-      storeId: product.store_id,
+      productImage: allImages[0] || null,
+      storeId: storeId,
       storeName,
+      storeCountry,
     });
     toast.success('Added to cart!');
     onOpenChange(false);
-  };
-
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(price);
   };
 
   return (
@@ -110,7 +109,7 @@ export function ProductDetailModal({
           <div>
             <h2 className="text-xl font-semibold">{product.name}</h2>
             <p className="text-2xl font-bold text-primary mt-1">
-              {formatPrice(product.price)}
+              {formatPrice(product.price, storeCountry)}
             </p>
           </div>
 

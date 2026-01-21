@@ -7,6 +7,7 @@ import { Header } from '@/components/Header';
 import { ProductCard } from '@/components/ProductCard';
 import { ProductDetailModal } from '@/components/ProductDetailModal';
 import { useStoreBySlug, useStoreProducts, Product } from '@/hooks/useStore';
+import { formatPrice } from '@/lib/currency';
 
 export default function StorePage() {
   const { slug } = useParams<{ slug: string }>();
@@ -82,7 +83,7 @@ export default function StorePage() {
               ) : store.shipping_charge ? (
                 <Badge variant="secondary" className="gap-1">
                   <Truck className="h-3 w-3" />
-                  ₹{store.shipping_charge} shipping
+                  {formatPrice(store.shipping_charge, store.country)} shipping
                 </Badge>
               ) : null}
               
@@ -110,23 +111,27 @@ export default function StorePage() {
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
             {availableProducts.map((product) => (
-              <ProductCard 
-                key={product.id} 
-                product={product} 
-                storeName={store.name}
-                onClick={() => handleProductClick(product)}
-              />
+                  <ProductCard
+                    key={product.id}
+                    product={product}
+                    storeName={store.name}
+                    storeId={store.id}
+                    storeCountry={store.country}
+                    onClick={() => handleProductClick(product)}
+                  />
             ))}
           </div>
         )}
       </section>
 
-      <ProductDetailModal
-        product={selectedProduct}
-        storeName={store.name}
-        open={modalOpen}
-        onOpenChange={setModalOpen}
-      />
+        <ProductDetailModal
+          product={selectedProduct}
+          storeName={store.name}
+          storeId={store.id}
+          storeCountry={store.country}
+          open={modalOpen}
+          onOpenChange={setModalOpen}
+        />
     </div>
   );
 }

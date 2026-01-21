@@ -6,6 +6,7 @@ export interface CartItem {
   quantity: number;
   storeId: string;
   storeName: string;
+  storeCountry: string;
 }
 
 const CART_KEY = 'happy2buy_cart';
