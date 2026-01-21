@@ -143,7 +143,7 @@ export default function Dashboard() {
 
   const copyStoreLink = () => {
     if (store) {
-      const link = `${window.location.origin}/store/${store.slug}`;
+      const link = `https://${store.slug}.happy2buy.in`;
       navigator.clipboard.writeText(link);
       setCopied(true);
       toast.success('Link copied!');
@@ -182,7 +182,7 @@ export default function Dashboard() {
                 <div>
                   <p className="text-sm font-medium">Your store link</p>
                   <p className="text-xs text-muted-foreground">
-                    {window.location.origin}/store/{store.slug}
+                    {store.slug}.happy2buy.in
                   </p>
                 </div>
               </div>
