@@ -21,9 +21,9 @@ import { SUPPORTED_COUNTRIES } from '@/lib/currency';
 
 const storeNameSchema = z.string().min(2, 'Store name must be at least 2 characters').max(50, 'Store name must be less than 50 characters');
 const usernameSchema = z.string()
-  .min(3, 'Username must be at least 3 characters')
-  .max(30, 'Username must be less than 30 characters')
-  .regex(/^[a-z0-9]+$/, 'Username can only contain lowercase letters and numbers');
+  .min(3, 'Store link must be at least 3 characters')
+  .max(30, 'Store link must be less than 30 characters')
+  .regex(/^[a-z0-9]+$/, 'Store link can only contain lowercase letters and numbers');
 const citySchema = z.string().min(2, 'City is required').max(100, 'City name is too long');
 const whatsappSchema = z.string().min(10, 'Please enter a valid phone number').max(20, 'Phone number is too long');
 
@@ -182,35 +182,34 @@ export default function Onboarding() {
                 )}
               </div>
 
-              {/* Username (Slug) */}
+              {/* Store Link (Slug) */}
               <div className="space-y-2">
-                <Label htmlFor="username">Store Username</Label>
-                <div className="relative">
-                  <Input
-                    id="username"
-                    placeholder="sarahscrafts"
-                    value={username}
-                    onChange={(e) => handleUsernameChange(e.target.value)}
-                    className="pr-10"
-                  />
-                  {showUsernameStatus && (
-                    <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                      {checkingSlug ? (
-                        <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                      ) : slugAvailable ? (
-                        <Check className="h-4 w-4 text-green-600" />
-                      ) : (
-                        <X className="h-4 w-4 text-destructive" />
-                      )}
-                    </div>
-                  )}
+                <Label htmlFor="storeLink">Store Link</Label>
+                <div className="flex">
+                  <div className="relative flex-1">
+                    <Input
+                      id="storeLink"
+                      placeholder="yourstore"
+                      value={username}
+                      onChange={(e) => handleUsernameChange(e.target.value)}
+                      className="rounded-r-none pr-10"
+                    />
+                    {showUsernameStatus && (
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                        {checkingSlug ? (
+                          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                        ) : slugAvailable ? (
+                          <Check className="h-4 w-4 text-emerald-600 dark:text-emerald-500" />
+                        ) : (
+                          <X className="h-4 w-4 text-destructive" />
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  <div className="inline-flex items-center px-3 rounded-r-md border border-l-0 border-input bg-muted text-muted-foreground text-sm">
+                    .happy2buy.in
+                  </div>
                 </div>
-                {/* URL Preview */}
-                {username && (
-                  <p className="text-sm text-muted-foreground">
-                    Your store URL: <span className="font-medium text-foreground">{username}.happy2buy.store</span>
-                  </p>
-                )}
                 {errors.username && (
                   <p className="text-sm text-destructive">{errors.username}</p>
                 )}
