@@ -4,14 +4,17 @@ import { Card } from '@/components/ui/card';
 import { useCart } from '@/hooks/useCart';
 import { Product } from '@/hooks/useStore';
 import { toast } from 'sonner';
+import { formatPrice } from '@/lib/currency';
 
 interface ProductCardProps {
   product: Product;
   storeName: string;
+  storeId: string;
+  storeCountry: string;
   onClick?: () => void;
 }
 
-export function ProductCard({ product, storeName, onClick }: ProductCardProps) {
+export function ProductCard({ product, storeName, storeId, storeCountry, onClick }: ProductCardProps) {
   const { addToCart } = useCart();
 
   // Use first image from image_urls array, fallback to image_url for backward compatibility
@@ -23,18 +26,12 @@ export function ProductCard({ product, storeName, onClick }: ProductCardProps) {
       productId: product.id,
       productName: product.name,
       productPrice: product.price,
-      productImage: displayImage,
-      storeId: product.store_id,
+      productImage: displayImage || null,
+      storeId: storeId,
       storeName,
+      storeCountry,
     });
     toast.success('Added to cart!');
-  };
-
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(price);
   };
 
   return (
@@ -67,7 +64,7 @@ export function ProductCard({ product, storeName, onClick }: ProductCardProps) {
       <div className="p-4">
         <h3 className="font-medium text-sm line-clamp-2 mb-1">{product.name}</h3>
         <p className="text-lg font-semibold text-primary mb-3">
-          {formatPrice(product.price)}
+          {formatPrice(product.price, storeCountry)}
         </p>
         <Button 
           onClick={(e) => {

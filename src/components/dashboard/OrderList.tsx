@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/select';
 import { Store, Order, useStoreOrders, useOrderItems, useUpdateOrderStatus } from '@/hooks/useStore';
 import { toast } from 'sonner';
+import { formatPrice } from '@/lib/currency';
 
 interface OrderListProps {
   store: Store;
@@ -59,6 +60,7 @@ export function OrderList({ store }: OrderListProps) {
           key={order.id}
           order={order}
           storeId={store.id}
+          storeCountry={store.country}
           isExpanded={expandedOrder === order.id}
           onToggle={() => setExpandedOrder(expandedOrder === order.id ? null : order.id)}
         />
@@ -70,20 +72,14 @@ export function OrderList({ store }: OrderListProps) {
 interface OrderCardProps {
   order: Order;
   storeId: string;
+  storeCountry: string;
   isExpanded: boolean;
   onToggle: () => void;
 }
 
-function OrderCard({ order, storeId, isExpanded, onToggle }: OrderCardProps) {
+function OrderCard({ order, storeId, storeCountry, isExpanded, onToggle }: OrderCardProps) {
   const { data: items } = useOrderItems(isExpanded ? order.id : undefined);
   const updateStatus = useUpdateOrderStatus();
-
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(price);
-  };
 
   const formatDate = (date: string) => {
     return new Date(date).toLocaleDateString('en-US', {
@@ -114,7 +110,7 @@ function OrderCard({ order, storeId, isExpanded, onToggle }: OrderCardProps) {
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <span className="font-semibold">{formatPrice(order.total_amount)}</span>
+            <span className="font-semibold">{formatPrice(order.total_amount, storeCountry)}</span>
             <Badge className={statusColors[order.status]}>{order.status}</Badge>
             {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
           </div>
@@ -154,7 +150,7 @@ function OrderCard({ order, storeId, isExpanded, onToggle }: OrderCardProps) {
                       {item.product_name} × {item.quantity}
                     </span>
                     <span className="text-muted-foreground">
-                      {formatPrice(item.product_price * item.quantity)}
+                      {formatPrice(item.product_price * item.quantity, storeCountry)}
                     </span>
                   </div>
                 ))}

@@ -6,10 +6,18 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { useAuth } from '@/hooks/useAuth';
 import { useMyStore, useCreateStore, useCheckSlugAvailability } from '@/hooks/useStore';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import { SUPPORTED_COUNTRIES } from '@/lib/currency';
 
 const storeNameSchema = z.string().min(2, 'Store name must be at least 2 characters').max(50, 'Store name must be less than 50 characters');
 const usernameSchema = z.string()
@@ -29,6 +37,7 @@ export default function Onboarding() {
   const [storeName, setStoreName] = useState('');
   const [username, setUsername] = useState('');
   const [city, setCity] = useState('');
+  const [country, setCountry] = useState('IN');
   const [whatsappNumber, setWhatsappNumber] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<{ storeName?: string; username?: string; city?: string; whatsapp?: string }>({});
@@ -112,6 +121,7 @@ export default function Onboarding() {
         name: storeName,
         slug: username,
         city,
+        country,
         whatsapp_number: whatsappNumber,
       });
       // Set the cache directly with the owner_id to avoid race condition
@@ -204,6 +214,23 @@ export default function Onboarding() {
                 {errors.username && (
                   <p className="text-sm text-destructive">{errors.username}</p>
                 )}
+              </div>
+
+              {/* Country */}
+              <div className="space-y-2">
+                <Label htmlFor="country">Country</Label>
+                <Select value={country} onValueChange={setCountry}>
+                  <SelectTrigger id="country">
+                    <SelectValue placeholder="Select your country" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {SUPPORTED_COUNTRIES.map((c) => (
+                      <SelectItem key={c.code} value={c.code}>
+                        {c.flag} {c.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               {/* City */}

@@ -9,6 +9,7 @@ export interface Store {
   slug: string;
   bio: string | null;
   city: string | null;
+  country: string;
   payment_instructions: string | null;
   whatsapp_number: string | null;
   estimated_delivery_time: string | null;
@@ -160,7 +161,7 @@ export function useCreateStore() {
   const { user } = useAuth();
 
   return useMutation({
-    mutationFn: async (data: { name: string; slug: string; city: string; bio?: string; whatsapp_number?: string; payment_instructions?: string }) => {
+    mutationFn: async (data: { name: string; slug: string; city: string; country?: string; bio?: string; whatsapp_number?: string; payment_instructions?: string }) => {
       if (!user) throw new Error('Not authenticated');
 
       const { data: store, error } = await supabase
@@ -170,6 +171,7 @@ export function useCreateStore() {
           name: data.name,
           slug: data.slug,
           city: data.city,
+          country: data.country || 'IN',
           bio: data.bio || null,
           whatsapp_number: data.whatsapp_number || null,
           payment_instructions: data.payment_instructions || null,

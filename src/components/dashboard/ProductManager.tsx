@@ -24,6 +24,7 @@ import {
 } from '@/hooks/useStore';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { formatPrice } from '@/lib/currency';
 
 const MAX_IMAGES = 5;
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
@@ -194,13 +195,6 @@ export function ProductManager({ store }: ProductManagerProps) {
     } catch (error) {
       toast.error('Failed to delete');
     }
-  };
-
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(price);
   };
 
   const getDisplayImage = (product: Product) => {
@@ -380,7 +374,7 @@ export function ProductManager({ store }: ProductManagerProps) {
                 <CardContent className="p-4">
                   <h3 className="font-medium text-sm line-clamp-1 mb-1">{product.name}</h3>
                   <p className="text-lg font-semibold text-primary mb-3">
-                    {formatPrice(product.price)}
+                    {formatPrice(product.price, store.country)}
                   </p>
                   
                   <div className="flex items-center justify-between gap-2 mb-3">

@@ -181,6 +181,7 @@ export type Database = {
         Row: {
           bio: string | null
           city: string | null
+          country: string | null
           created_at: string
           estimated_delivery_time: string | null
           free_shipping: boolean | null
@@ -196,6 +197,7 @@ export type Database = {
         Insert: {
           bio?: string | null
           city?: string | null
+          country?: string | null
           created_at?: string
           estimated_delivery_time?: string | null
           free_shipping?: boolean | null
@@ -211,6 +213,7 @@ export type Database = {
         Update: {
           bio?: string | null
           city?: string | null
+          country?: string | null
           created_at?: string
           estimated_delivery_time?: string | null
           free_shipping?: boolean | null

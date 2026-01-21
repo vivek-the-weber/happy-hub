@@ -1,0 +1,1 @@
+ALTER TABLE public.stores ADD COLUMN country text DEFAULT 'IN';
