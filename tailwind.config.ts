@@ -75,8 +75,10 @@ export default {
           to: { opacity: "1", transform: "translateY(0)" },
         },
         "float": {
-          "0%, 100%": { transform: "scale(1)", opacity: "1" },
-          "50%": { transform: "scale(1.03)", opacity: "0.9" },
+          "0%, 100%": { transform: "translateY(0) rotate(0deg)" },
+          "25%": { transform: "translateY(-4px) rotate(0.5deg)" },
+          "50%": { transform: "translateY(-6px) rotate(-0.5deg)" },
+          "75%": { transform: "translateY(-3px) rotate(0.3deg)" },
         },
       },
       animation: {
