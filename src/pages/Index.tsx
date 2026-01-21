@@ -1,78 +1,57 @@
-import { Link } from 'react-router-dom';
-import { ArrowRight, Store, ShoppingBag, Share2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Header } from '@/components/Header';
+import { useState } from 'react';
+import { RoleSwitcher } from '@/components/landing/RoleSwitcher';
+import { CustomerView } from '@/components/landing/CustomerView';
+import { SellerView } from '@/components/landing/SellerView';
+import { Footer } from '@/components/landing/Footer';
 
 export default function Index() {
+  const [selectedRole, setSelectedRole] = useState<'customer' | 'seller' | null>(null);
 
   return (
-    <div className="min-h-screen bg-background">
-      <Header />
-      
-      {/* Hero Section */}
-      <section className="container py-16 md:py-24">
-        <div className="max-w-2xl mx-auto text-center">
-          <h1 className="text-4xl md:text-5xl font-bold text-balance mb-6">
-            Sell online, the simple way
-          </h1>
-          <p className="text-lg text-muted-foreground mb-8 text-balance">
-            Create your online store in minutes. Perfect for Instagram and WhatsApp sellers who want to keep things simple.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <Link to="/auth?mode=signup">
-              <Button size="lg" className="w-full sm:w-auto">
-                Create Your Store
-                <ArrowRight className="h-4 w-4 ml-2" />
-              </Button>
-            </Link>
-            <Link to="/auth">
-              <Button variant="outline" size="lg" className="w-full sm:w-auto">
-                Sign In
-              </Button>
-            </Link>
+    <div className="min-h-screen flex flex-col bg-background">
+      {/* Hero Section - Dark background */}
+      <section className="relative bg-foreground text-background">
+        <div className="container py-20 md:py-32">
+          <div className="max-w-2xl mx-auto text-center space-y-8">
+            {/* Brand */}
+            <h1 className="text-2xl font-bold tracking-tight">happy2buy</h1>
+            
+            {/* Headline */}
+            <div className="space-y-4">
+              <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-balance">
+                Simple online stores for small sellers
+              </h2>
+              <p className="text-lg md:text-xl text-background/70">
+                Create a store. Share a link. Receive orders.
+              </p>
+            </div>
+
+            {/* Role Switcher */}
+            <RoleSwitcher 
+              selected={selectedRole} 
+              onSelect={setSelectedRole}
+              className="pt-4"
+            />
           </div>
         </div>
       </section>
 
-      {/* Features */}
-      <section className="container py-16 border-t">
-        <div className="grid md:grid-cols-3 gap-8">
-          <div className="text-center">
-            <div className="w-12 h-12 rounded-full bg-accent flex items-center justify-center mx-auto mb-4">
-              <Store className="h-6 w-6 text-accent-foreground" />
-            </div>
-            <h3 className="font-semibold mb-2">Simple Product Catalog</h3>
-            <p className="text-sm text-muted-foreground">
-              Add your products with photos and prices. No complicated options.
+      {/* Content Section - Switches based on role */}
+      <main className="flex-1">
+        {selectedRole === 'customer' && <CustomerView />}
+        {selectedRole === 'seller' && <SellerView />}
+        
+        {/* Prompt to select if nothing selected */}
+        {!selectedRole && (
+          <div className="py-16 px-4 text-center">
+            <p className="text-muted-foreground">
+              Choose an option above to learn more
             </p>
           </div>
-          <div className="text-center">
-            <div className="w-12 h-12 rounded-full bg-accent flex items-center justify-center mx-auto mb-4">
-              <ShoppingBag className="h-6 w-6 text-accent-foreground" />
-            </div>
-            <h3 className="font-semibold mb-2">Receive Orders</h3>
-            <p className="text-sm text-muted-foreground">
-              Customers order directly from your store. You get notified with their details.
-            </p>
-          </div>
-          <div className="text-center">
-            <div className="w-12 h-12 rounded-full bg-accent flex items-center justify-center mx-auto mb-4">
-              <Share2 className="h-6 w-6 text-accent-foreground" />
-            </div>
-            <h3 className="font-semibold mb-2">Share Your Link</h3>
-            <p className="text-sm text-muted-foreground">
-              Get a simple link to share on Instagram, WhatsApp, or anywhere.
-            </p>
-          </div>
-        </div>
-      </section>
+        )}
+      </main>
 
-      {/* Footer */}
-      <footer className="border-t py-8">
-        <div className="container text-center text-sm text-muted-foreground">
-          <p>© 2024 happy2buy. Made for small sellers with ❤️</p>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 }
