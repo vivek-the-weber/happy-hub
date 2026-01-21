@@ -186,6 +186,7 @@ export type Database = {
           estimated_delivery_time: string | null
           free_shipping: boolean | null
           id: string
+          logo_url: string | null
           name: string
           owner_id: string
           payment_instructions: string | null
@@ -202,6 +203,7 @@ export type Database = {
           estimated_delivery_time?: string | null
           free_shipping?: boolean | null
           id?: string
+          logo_url?: string | null
           name: string
           owner_id: string
           payment_instructions?: string | null
@@ -218,6 +220,7 @@ export type Database = {
           estimated_delivery_time?: string | null
           free_shipping?: boolean | null
           id?: string
+          logo_url?: string | null
           name?: string
           owner_id?: string
           payment_instructions?: string | null
