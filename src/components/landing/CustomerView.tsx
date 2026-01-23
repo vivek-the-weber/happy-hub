@@ -36,7 +36,7 @@ export function CustomerView() {
             </div>
             <h2 className="text-xl font-semibold">What is happy2buy?</h2>
           </div>
-          <p className="text-muted-foreground leading-relaxed">happy2buy is a platform where small sellers create online stores so you can shop directly from them.</p>
+          <p className="text-muted-foreground leading-relaxed">happy2buy lets small sellers create simple online stores so you can buy directly from them and talk to them for any product details.</p>
         </AnimatedSection>
 
         {/* How ordering works */}
