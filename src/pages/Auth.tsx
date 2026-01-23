@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
+import { ArrowLeft, Loader2 } from 'lucide-react';
 import { z } from 'zod';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 
@@ -90,107 +90,111 @@ export default function Auth() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-pulse text-muted-foreground">Loading...</div>
+      <div className="min-h-screen bg-surface-inverse flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-background/60" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
-      <header className="container py-4">
-        <Link to="/" className="text-xl font-bold text-primary">
-          happy2buy
+    <div className="min-h-screen bg-surface-inverse text-background flex flex-col">
+      {/* Header */}
+      <header className="p-6 flex items-center justify-between">
+        <Link to="/" className="flex items-center gap-2 text-background/60 hover:text-background transition-colors">
+          <ArrowLeft className="h-5 w-5" />
+          <span className="text-sm">Back</span>
         </Link>
+        <Link to="/" className="text-xl font-bold">happy2buy</Link>
+        <div className="w-16" />
       </header>
-      
-      <div className="flex-1 flex items-center justify-center p-4">
-        <Card className="w-full max-w-md">
-          <CardHeader className="text-center">
-            <CardTitle>{isSignUp ? 'Create your store' : 'Welcome back'}</CardTitle>
-            <CardDescription>
-              {isSignUp 
-                ? 'Start selling online in minutes' 
-                : 'Sign in to manage your store'}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              {isSignUp && (
-                <div className="space-y-2">
-                  <Label htmlFor="fullName">Your name</Label>
-                  <Input
-                    id="fullName"
-                    type="text"
-                    placeholder="Enter your name"
-                    value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
-                  />
-                  {errors.fullName && (
-                    <p className="text-sm text-destructive">{errors.fullName}</p>
-                  )}
-                </div>
-              )}
-              
+
+      {/* Form */}
+      <main className="flex-1 flex flex-col items-center justify-center px-6 pb-20">
+        <div className="w-full max-w-sm space-y-8">
+          <div className="text-center space-y-2">
+            <h1 className="text-3xl font-bold">
+              {isSignUp ? 'Create your account' : 'Welcome back'}
+            </h1>
+            <p className="text-background/60">
+              {isSignUp ? 'Start selling in minutes' : 'Sign in to manage your store'}
+            </p>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-5">
+            {isSignUp && (
               <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="fullName" className="text-background/80">Your name</Label>
                 <Input
-                  id="email"
-                  type="email"
-                  placeholder="you@example.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  id="fullName"
+                  type="text"
+                  placeholder="Enter your name"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  className="bg-white/5 border-white/10 text-background placeholder:text-background/40 focus:border-primary h-12 rounded-xl"
                 />
-                {errors.email && (
-                  <p className="text-sm text-destructive">{errors.email}</p>
+                {errors.fullName && (
+                  <p className="text-red-400 text-sm">{errors.fullName}</p>
                 )}
               </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="At least 6 characters"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                />
-                {errors.password && (
-                  <p className="text-sm text-destructive">{errors.password}</p>
-                )}
-              </div>
-              
-              <Button type="submit" className="w-full" disabled={isSubmitting}>
-                {isSubmitting ? 'Please wait...' : (isSignUp ? 'Create Account' : 'Sign In')}
-              </Button>
-            </form>
-            
-            <div className="mt-6 text-center text-sm">
-              {isSignUp ? (
-                <p className="text-muted-foreground">
-                  Already have an account?{' '}
-                  <button 
-                    onClick={() => setIsSignUp(false)}
-                    className="text-primary hover:underline font-medium"
-                  >
-                    Sign in
-                  </button>
-                </p>
-              ) : (
-                <p className="text-muted-foreground">
-                  New to happy2buy?{' '}
-                  <button 
-                    onClick={() => setIsSignUp(true)}
-                    className="text-primary hover:underline font-medium"
-                  >
-                    Create an account
-                  </button>
-                </p>
+            )}
+
+            <div className="space-y-2">
+              <Label htmlFor="email" className="text-background/80">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="you@example.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="bg-white/5 border-white/10 text-background placeholder:text-background/40 focus:border-primary h-12 rounded-xl"
+              />
+              {errors.email && (
+                <p className="text-red-400 text-sm">{errors.email}</p>
               )}
             </div>
-          </CardContent>
-        </Card>
-      </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="password" className="text-background/80">Password</Label>
+              <Input
+                id="password"
+                type="password"
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="bg-white/5 border-white/10 text-background placeholder:text-background/40 focus:border-primary h-12 rounded-xl"
+              />
+              {errors.password && (
+                <p className="text-red-400 text-sm">{errors.password}</p>
+              )}
+            </div>
+
+            <Button
+              type="submit"
+              disabled={isSubmitting}
+              className="w-full h-12 rounded-xl text-base font-medium"
+            >
+              {isSubmitting ? (
+                <Loader2 className="h-5 w-5 animate-spin" />
+              ) : isSignUp ? (
+                'Create Account'
+              ) : (
+                'Sign In'
+              )}
+            </Button>
+          </form>
+
+          <p className="text-center text-background/60">
+            {isSignUp ? 'Already have an account?' : "Don't have an account?"}{' '}
+            <button
+              type="button"
+              onClick={() => setIsSignUp(!isSignUp)}
+              className="text-primary hover:underline font-medium"
+            >
+              {isSignUp ? 'Sign in' : 'Sign up'}
+            </button>
+          </p>
+        </div>
+      </main>
     </div>
   );
 }
