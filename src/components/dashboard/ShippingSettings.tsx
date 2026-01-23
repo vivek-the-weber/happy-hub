@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { Truck, Play, Clock } from 'lucide-react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
@@ -71,58 +70,65 @@ export function ShippingSettings({ store }: ShippingSettingsProps) {
   return (
     <div className="space-y-6">
       {/* Shipping Settings Card */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+      <div className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden">
+        <div className="p-6 border-b border-white/10">
+          <h3 className="text-lg font-semibold text-background flex items-center gap-2">
             <Truck className="h-5 w-5" />
             Shipping Settings
-          </CardTitle>
-          <CardDescription>
+          </h3>
+          <p className="text-sm text-background/60 mt-1">
             Configure how you ship orders to customers
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
+          </p>
+        </div>
+        <div className="p-6">
           <form onSubmit={handleSaveShipping} className="space-y-6 max-w-md">
             <div className="space-y-2">
-              <Label htmlFor="deliveryTime">Estimated Delivery Time</Label>
+              <Label htmlFor="deliveryTime" className="text-background/80">
+                Estimated Delivery Time
+              </Label>
               <Input
                 id="deliveryTime"
                 placeholder="e.g. 5-7 days"
                 value={estimatedDeliveryTime}
                 onChange={(e) => setEstimatedDeliveryTime(e.target.value)}
+                className="bg-white/5 border-white/10 text-background placeholder:text-background/40 focus:border-primary h-12 rounded-xl"
               />
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-background/50">
                 Tell customers how long delivery usually takes
               </p>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="shippingCharge">Shipping Charge</Label>
+              <Label htmlFor="shippingCharge" className="text-background/80">
+                Shipping Charge
+              </Label>
               <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">{getCurrencySymbol(store.country)}</span>
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-background/60">
+                  {getCurrencySymbol(store.country)}
+                </span>
                 <Input
                   id="shippingCharge"
                   type="number"
                   min="0"
                   step="1"
-                  className="pl-8"
+                  className="pl-8 bg-white/5 border-white/10 text-background placeholder:text-background/40 focus:border-primary h-12 rounded-xl"
                   placeholder="0"
                   value={shippingCharge}
                   onChange={(e) => setShippingCharge(e.target.value)}
                   disabled={freeShipping}
                 />
               </div>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-background/50">
                 Amount charged for shipping each order
               </p>
             </div>
 
-            <div className="flex items-center justify-between rounded-lg border p-4">
+            <div className="flex items-center justify-between rounded-xl border border-white/10 bg-white/5 p-4">
               <div className="space-y-0.5">
-                <Label htmlFor="freeShipping" className="text-base cursor-pointer">
+                <Label htmlFor="freeShipping" className="text-base text-background cursor-pointer">
                   Free Shipping
                 </Label>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-sm text-background/60">
                   Offer free shipping on all orders
                 </p>
               </div>
@@ -133,51 +139,55 @@ export function ShippingSettings({ store }: ShippingSettingsProps) {
               />
             </div>
 
-            <Button type="submit" disabled={updateStore.isPending}>
+            <Button 
+              type="submit" 
+              disabled={updateStore.isPending}
+              className="rounded-xl"
+            >
               {updateStore.isPending ? 'Saving...' : 'Save Shipping Settings'}
             </Button>
           </form>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       {/* Learn Shipping Card */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+      <div className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden">
+        <div className="p-6 border-b border-white/10">
+          <h3 className="text-lg font-semibold text-background flex items-center gap-2">
             <Play className="h-5 w-5" />
             Learn Shipping
-          </CardTitle>
-          <CardDescription>
+          </h3>
+          <p className="text-sm text-background/60 mt-1">
             Simple guides to help you ship orders like a pro
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
+          </p>
+        </div>
+        <div className="p-6">
           <div className="space-y-4">
             {shippingVideos.map((video, index) => (
               <div
                 key={index}
-                className="flex gap-4 p-4 rounded-lg border bg-muted/30 hover:bg-muted/50 transition-colors"
+                className="flex gap-4 p-4 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 transition-colors"
               >
-                <div className="flex-shrink-0 w-20 h-14 rounded-md bg-muted flex items-center justify-center">
-                  <Play className="h-6 w-6 text-muted-foreground" />
+                <div className="flex-shrink-0 w-20 h-14 rounded-lg bg-white/10 flex items-center justify-center">
+                  <Play className="h-6 w-6 text-background/60" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <h4 className="font-medium text-sm">{video.title}</h4>
-                    <Badge variant="secondary" className="text-xs">
+                    <h4 className="font-medium text-sm text-background">{video.title}</h4>
+                    <Badge className="text-xs bg-white/10 text-background/70 border border-white/10">
                       <Clock className="h-3 w-3 mr-1" />
                       Coming soon
                     </Badge>
                   </div>
-                  <p className="text-sm text-muted-foreground mt-1">
+                  <p className="text-sm text-background/60 mt-1">
                     {video.description}
                   </p>
                 </div>
               </div>
             ))}
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   );
 }
