@@ -12,7 +12,12 @@ export default function Index() {
     <div className="min-h-screen flex flex-col bg-surface-inverse text-background">
       {/* Header */}
       <header className="p-6 text-center">
-        <h1 className="text-xl font-bold">happy2buy</h1>
+        <button 
+          onClick={() => setSelectedRole(null)}
+          className="text-xl font-bold hover:opacity-80 transition-opacity"
+        >
+          happy2buy
+        </button>
       </header>
 
       <main className="flex-1 flex flex-col">
