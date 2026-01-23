@@ -11,6 +11,9 @@
     --background: 0 0% 99%;
     --foreground: 0 0% 0%;
     --surface-inverse: 0 0% 0%;
+    --card-dark: 0 0% 8%;
+    --border-dark: 0 0% 20%;
+    --input-dark: 0 0% 12%;
 
     --card: 0 0% 100%;
     --card-foreground: 220 15% 15%;
