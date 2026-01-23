@@ -81,7 +81,7 @@ export function CustomerView() {
             <a href="mailto:support@happy2buy.in" className="text-sm text-primary hover:underline">
               support@happy2buy.in
             </a>
-            <a href="https://instagram.com/happy2buy" target="_blank" rel="noopener noreferrer" className="text-sm text-primary hover:underline">
+            <a target="_blank" rel="noopener noreferrer" className="text-sm text-primary hover:underline" href="https://instagram.com/happy2buyy">
               Instagram
             </a>
             <a href="https://twitter.com/happy2buy" target="_blank" rel="noopener noreferrer" className="text-sm text-primary hover:underline">
