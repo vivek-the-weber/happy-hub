@@ -104,20 +104,20 @@ function OrderCard({ order, storeId, storeCountry, isExpanded, onToggle }: Order
         className="p-4 cursor-pointer hover:bg-white/5 transition-colors" 
         onClick={onToggle}
       >
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div>
-              <h3 className="font-medium text-background">{order.customer_name}</h3>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="min-w-0">
+              <h3 className="font-medium text-background truncate">{order.customer_name}</h3>
               <p className="text-sm text-background/50">{formatDate(order.created_at)}</p>
             </div>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
             <span className="font-semibold text-background">{formatPrice(order.total_amount, storeCountry)}</span>
-            <Badge className={`${statusColors[order.status]} border`}>{order.status}</Badge>
+            <Badge className={`${statusColors[order.status]} border text-xs`}>{order.status}</Badge>
             {isExpanded ? (
-              <ChevronUp className="h-4 w-4 text-background/60" />
+              <ChevronUp className="h-4 w-4 text-background/60 shrink-0" />
             ) : (
-              <ChevronDown className="h-4 w-4 text-background/60" />
+              <ChevronDown className="h-4 w-4 text-background/60 shrink-0" />
             )}
           </div>
         </div>
