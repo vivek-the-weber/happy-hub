@@ -1,45 +1,75 @@
 import { useState } from 'react';
-import { RoleSwitcher } from '@/components/landing/RoleSwitcher';
+import { ShoppingBag, Store } from 'lucide-react';
 import { CustomerView } from '@/components/landing/CustomerView';
 import { SellerView } from '@/components/landing/SellerView';
 import { Footer } from '@/components/landing/Footer';
+import { cn } from '@/lib/utils';
 
 export default function Index() {
   const [selectedRole, setSelectedRole] = useState<'customer' | 'seller' | null>(null);
 
   return (
-    <div className="min-h-screen flex flex-col bg-background">
-      {/* Floating overlay - only when no role selected */}
-      {selectedRole === null && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground">
-          <div className="text-center space-y-8 px-4">
-            <h1 className="text-3xl md:text-4xl font-bold text-background">happy2buy</h1>
-            <p className="text-background/70 text-lg">Simple online stores for small sellers</p>
-            <RoleSwitcher 
-              selected={selectedRole} 
-              onSelect={setSelectedRole}
-              className="pt-4"
-            />
+    <div className="min-h-screen flex flex-col bg-foreground text-background">
+      {/* Header */}
+      <header className="p-6 text-center">
+        <h1 className="text-xl font-bold">happy2buy</h1>
+      </header>
+
+      <main className="flex-1 flex flex-col">
+        {/* Hero section - always visible when no role selected */}
+        {selectedRole === null && (
+          <div className="flex-1 flex flex-col items-center justify-center px-6 py-12">
+            <div className="text-center space-y-6 max-w-lg w-full">
+              <h2 className="text-5xl md:text-6xl font-bold tracking-tight">
+                Simple<br />stores.
+              </h2>
+              
+              <p className="text-background/60 text-lg">
+                No setup. Just selling.
+              </p>
+
+              {/* Role selection buttons */}
+              <div className="space-y-4 pt-8">
+                <button
+                  onClick={() => setSelectedRole('customer')}
+                  className={cn(
+                    "w-full flex items-center justify-between px-6 py-5 rounded-2xl",
+                    "bg-background/5 border border-customer/30",
+                    "text-lg font-medium text-background/90",
+                    "transition-all duration-300 hover:bg-customer/10 hover:border-customer/50"
+                  )}
+                >
+                  <span>I'm a Customer</span>
+                  <ShoppingBag className="h-6 w-6 text-customer" />
+                </button>
+
+                <button
+                  onClick={() => setSelectedRole('seller')}
+                  className={cn(
+                    "w-full flex items-center justify-between px-6 py-5 rounded-2xl",
+                    "bg-background/5 border border-primary/30",
+                    "text-lg font-medium text-background/90",
+                    "transition-all duration-300 hover:bg-primary/10 hover:border-primary/50"
+                  )}
+                >
+                  <span>I'm a Seller</span>
+                  <Store className="h-6 w-6 text-primary" />
+                </button>
+              </div>
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Content - shows after selection */}
-      {selectedRole !== null && (
-        <div className={selectedRole === 'seller' ? 'flex-1 flex flex-col bg-foreground text-background' : 'flex-1 flex flex-col'}>
-          {/* Simple header with brand */}
-          <header className="p-6">
-            <h1 className="text-xl font-bold">happy2buy</h1>
-          </header>
+        {/* Content after selection */}
+        {selectedRole === 'customer' && (
+          <div className="flex-1 bg-background text-foreground">
+            <CustomerView />
+          </div>
+        )}
+        {selectedRole === 'seller' && <SellerView />}
+      </main>
 
-          <main className="flex-1 flex flex-col">
-            {selectedRole === 'customer' && <CustomerView />}
-            {selectedRole === 'seller' && <SellerView />}
-          </main>
-
-          <Footer dark={selectedRole === 'seller'} />
-        </div>
-      )}
+      <Footer dark={selectedRole !== 'customer'} />
     </div>
   );
 }
