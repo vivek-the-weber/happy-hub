@@ -1,28 +1,54 @@
 import { Link } from 'react-router-dom';
+import { cn } from '@/lib/utils';
 
-export function Footer() {
+interface FooterProps {
+  dark?: boolean;
+}
+
+export function Footer({ dark = false }: FooterProps) {
   return (
-    <footer className="border-t py-8 mt-auto">
+    <footer className={cn(
+      "py-8 mt-auto",
+      dark ? "border-t border-background/10" : "border-t"
+    )}>
       <div className="container">
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-          <p className="text-sm text-muted-foreground">
-            © {new Date().getFullYear()} happy2buy
-          </p>
-          
-          <nav className="flex flex-wrap items-center justify-center gap-6 text-sm text-muted-foreground">
-            <Link to="/about" className="hover:text-foreground transition-colors">
+          <nav className={cn(
+            "flex flex-wrap items-center justify-center gap-6 text-sm order-first sm:order-none",
+            dark ? "text-background/60" : "text-muted-foreground"
+          )}>
+            <Link to="/about" className={cn(
+              "transition-colors",
+              dark ? "hover:text-background" : "hover:text-foreground"
+            )}>
               About
             </Link>
-            <a href="mailto:support@happy2buy.in" className="hover:text-foreground transition-colors">
+            <a href="mailto:support@happy2buy.in" className={cn(
+              "transition-colors",
+              dark ? "hover:text-background" : "hover:text-foreground"
+            )}>
               Contact
             </a>
-            <Link to="/privacy" className="hover:text-foreground transition-colors">
+            <Link to="/privacy" className={cn(
+              "transition-colors",
+              dark ? "hover:text-background" : "hover:text-foreground"
+            )}>
               Privacy Policy
             </Link>
-            <Link to="/terms" className="hover:text-foreground transition-colors">
+            <Link to="/terms" className={cn(
+              "transition-colors",
+              dark ? "hover:text-background" : "hover:text-foreground"
+            )}>
               Terms
             </Link>
           </nav>
+          
+          <p className={cn(
+            "text-sm",
+            dark ? "text-background/60" : "text-muted-foreground"
+          )}>
+            © {new Date().getFullYear()} happy2buy
+          </p>
         </div>
       </div>
     </footer>

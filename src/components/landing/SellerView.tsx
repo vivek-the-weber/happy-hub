@@ -7,24 +7,27 @@ export function SellerView() {
   const [modalOpen, setModalOpen] = useState(false);
 
   return (
-    <div className="py-16 px-4">
-      <div className="max-w-xl mx-auto text-center space-y-8">
-        <p className="text-lg text-muted-foreground">
-          No complicated setup. No technical skills needed.
-          Just your products and a link to share.
-        </p>
+    <div className="flex-1 flex flex-col items-center justify-center px-6 py-20">
+      <div className="text-center space-y-10 max-w-lg">
+        <h1 className="text-5xl md:text-6xl font-bold tracking-tight">
+          Simple<br />stores.
+        </h1>
         
         <Button 
           size="lg" 
           onClick={() => setModalOpen(true)}
-          className="text-lg px-8 py-6 h-auto rounded-xl shadow-lg hover:shadow-xl transition-shadow"
+          className="w-full text-lg py-7 h-auto rounded-2xl bg-primary hover:bg-primary/90 text-primary-foreground font-medium transition-colors"
         >
-          Ready to sell? Create your store
+          Create your store
           <ArrowRight className="ml-2 h-5 w-5" />
         </Button>
 
-        <SellerModal open={modalOpen} onOpenChange={setModalOpen} />
+        <p className="text-muted-foreground text-lg">
+          No setup. Just selling.
+        </p>
       </div>
+
+      <SellerModal open={modalOpen} onOpenChange={setModalOpen} />
     </div>
   );
 }
