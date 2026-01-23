@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { MessageCircle, Truck, Package } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -21,6 +21,17 @@ export default function StorePage({ subdomainSlug }: StorePageProps) {
   
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
+
+  // Update page title to store name
+  useEffect(() => {
+    if (store) {
+      document.title = store.name;
+    }
+    
+    return () => {
+      document.title = 'Happy2Buy';
+    };
+  }, [store]);
 
   const handleProductClick = (product: Product) => {
     setSelectedProduct(product);
