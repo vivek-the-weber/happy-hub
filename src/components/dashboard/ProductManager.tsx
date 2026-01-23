@@ -360,7 +360,7 @@ export function ProductManager({ store }: ProductManagerProps) {
                 key={product.id} 
                 className={`bg-white/5 border border-white/10 rounded-2xl overflow-hidden ${!product.is_available ? 'opacity-60' : ''}`}
               >
-                <div className="aspect-[16/9] bg-white/5 relative">
+                <div className="h-24 bg-white/5 relative">
                   {displayImage ? (
                     <>
                       <img
