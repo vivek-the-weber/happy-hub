@@ -47,11 +47,10 @@ export function CustomerView() {
             <div className="w-10 h-10 rounded-full bg-accent flex items-center justify-center">
               <Info className="h-5 w-5 text-accent-foreground" />
             </div>
-            <h2 className="text-xl font-semibold">What is happy2buy?</h2>
+          <h2 className="text-xl font-semibold">What is happy2buy?</h2>
           </div>
           <p className="text-muted-foreground leading-relaxed">
-            happy2buy is a platform that helps small businesses create their own online stores.
-            We do not sell products directly.
+            happy2buy helps small sellers create simple online stores so you can shop directly from them.
           </p>
         </AnimatedSection>
 
@@ -61,11 +60,10 @@ export function CustomerView() {
             <div className="w-10 h-10 rounded-full bg-accent flex items-center justify-center">
               <Package className="h-5 w-5 text-accent-foreground" />
             </div>
-            <h2 className="text-xl font-semibold">How ordering works</h2>
+            <h2 className="text-xl font-semibold">How buying works</h2>
           </div>
           <p className="text-muted-foreground leading-relaxed">
-            When you place an order, it goes directly to the store you ordered from.
-            The store owner contacts you for payment and delivery details.
+            You browse a seller's store, place your order, and the seller takes care of the rest, just like buying from a shop you know online.
           </p>
         </AnimatedSection>
 
@@ -75,14 +73,10 @@ export function CustomerView() {
             <div className="w-10 h-10 rounded-full bg-accent flex items-center justify-center">
               <ShieldCheck className="h-5 w-5 text-accent-foreground" />
             </div>
-            <h2 className="text-xl font-semibold">Transparency and trust</h2>
+            <h2 className="text-xl font-semibold">Transparency & trust</h2>
           </div>
           <p className="text-muted-foreground leading-relaxed">
-            Each store clearly shows its contact details.
-            You always know who you are buying from.
-          </p>
-          <p className="text-sm text-muted-foreground/70 italic">
-            happy2buy does not handle payments or deliveries.
+            Every store shows clear contact details so you always know who you're buying from.
           </p>
         </AnimatedSection>
 
@@ -95,8 +89,7 @@ export function CustomerView() {
             <h2 className="text-xl font-semibold">Need help?</h2>
           </div>
           <p className="text-muted-foreground leading-relaxed">
-            If you have questions about an order, contact the store directly.
-            For platform-related issues, reach happy2buy support.
+            Our support team is here if you need help using Happy2Buy.
           </p>
           <div className="flex flex-wrap gap-4 pt-2">
             <a 
