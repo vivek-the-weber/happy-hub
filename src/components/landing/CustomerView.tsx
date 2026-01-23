@@ -65,9 +65,7 @@ export function CustomerView() {
             Each store clearly shows its contact details.
             You always know who you are buying from.
           </p>
-          <p className="text-sm text-muted-foreground/70 italic">
-            happy2buy does not handle payments or deliveries.
-          </p>
+          
         </AnimatedSection>
 
         {/* Need help */}
