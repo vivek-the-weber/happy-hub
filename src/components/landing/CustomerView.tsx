@@ -1,4 +1,40 @@
 import { HelpCircle, ShieldCheck, Package, Info } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { cn } from '@/lib/utils';
+
+function AnimatedSection({ children }: { children: React.ReactNode }) {
+  const [isVisible, setIsVisible] = useState(false);
+  const ref = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setIsVisible(true);
+          observer.disconnect();
+        }
+      },
+      { threshold: 0.2 }
+    );
+
+    if (ref.current) observer.observe(ref.current);
+    return () => observer.disconnect();
+  }, []);
+
+  return (
+    <section
+      ref={ref}
+      className={cn(
+        "space-y-4 transition-all duration-700",
+        isVisible 
+          ? "opacity-100 translate-y-0" 
+          : "opacity-0 translate-y-8"
+      )}
+    >
+      {children}
+    </section>
+  );
+}
 
 export function CustomerView() {
   return (
@@ -6,7 +42,7 @@ export function CustomerView() {
       <div className="max-w-2xl mx-auto space-y-12">
         
         {/* What is happy2buy */}
-        <section className="space-y-4">
+        <AnimatedSection>
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-accent flex items-center justify-center">
               <Info className="h-5 w-5 text-accent-foreground" />
@@ -17,10 +53,10 @@ export function CustomerView() {
             happy2buy is a platform that helps small businesses create their own online stores.
             We do not sell products directly.
           </p>
-        </section>
+        </AnimatedSection>
 
         {/* How ordering works */}
-        <section className="space-y-4">
+        <AnimatedSection>
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-accent flex items-center justify-center">
               <Package className="h-5 w-5 text-accent-foreground" />
@@ -31,10 +67,10 @@ export function CustomerView() {
             When you place an order, it goes directly to the store you ordered from.
             The store owner contacts you for payment and delivery details.
           </p>
-        </section>
+        </AnimatedSection>
 
         {/* Transparency & trust */}
-        <section className="space-y-4">
+        <AnimatedSection>
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-accent flex items-center justify-center">
               <ShieldCheck className="h-5 w-5 text-accent-foreground" />
@@ -48,10 +84,10 @@ export function CustomerView() {
           <p className="text-sm text-muted-foreground/70 italic">
             happy2buy does not handle payments or deliveries.
           </p>
-        </section>
+        </AnimatedSection>
 
         {/* Need help */}
-        <section className="space-y-4">
+        <AnimatedSection>
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-accent flex items-center justify-center">
               <HelpCircle className="h-5 w-5 text-accent-foreground" />
@@ -86,7 +122,7 @@ export function CustomerView() {
               Twitter/X
             </a>
           </div>
-        </section>
+        </AnimatedSection>
 
       </div>
     </div>
