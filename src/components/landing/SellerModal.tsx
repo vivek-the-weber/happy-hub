@@ -27,7 +27,7 @@ function StepCard({ icon, label, onClick, isVisible }: StepCardProps) {
     <button
       onClick={onClick}
       className={cn(
-        "w-full flex items-center gap-4 p-5 rounded-2xl border border-border bg-card transition-all duration-300 text-left group animate-scale-in shadow-lg hover:shadow-xl cursor-pointer"
+        "inline-flex items-center gap-3 p-4 rounded-2xl border border-border bg-card transition-all duration-300 text-left group animate-scale-in shadow-lg hover:shadow-xl cursor-pointer"
       )}
     >
       <div className="flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center bg-primary/10 text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
@@ -128,7 +128,7 @@ export function SellerModal({ open, onOpenChange }: SellerModalProps) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-sm mx-4 p-0 border-0 bg-transparent shadow-none" blur>
+      <DialogContent className="sm:max-w-fit mx-4 p-0 border-0 bg-transparent shadow-none flex items-center justify-center" blur>
         {steps.map((stepData) => (
           <StepCard
             key={stepData.step}
