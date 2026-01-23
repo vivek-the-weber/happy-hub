@@ -27,14 +27,14 @@ function StepCard({ icon, label, onClick, isVisible }: StepCardProps) {
     <button
       onClick={onClick}
       className={cn(
-        "inline-flex items-center gap-3 p-4 rounded-2xl border border-border bg-card transition-all duration-300 text-left group animate-scale-in shadow-lg hover:shadow-xl cursor-pointer",
-        "min-w-[200px]"
+        "inline-flex items-center gap-2.5 px-4 py-3 rounded-2xl border border-border bg-card transition-all duration-300 text-left group animate-scale-in shadow-lg hover:shadow-xl cursor-pointer",
+        "max-w-[180px]"
       )}
     >
-      <div className="flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center bg-primary/10 text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
+      <div className="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center bg-primary/10 text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
         {icon}
       </div>
-      <p className="font-semibold text-lg">{label}</p>
+      <p className="font-semibold text-base leading-tight">{label}</p>
     </button>
   );
 }
