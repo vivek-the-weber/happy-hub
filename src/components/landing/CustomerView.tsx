@@ -47,10 +47,7 @@ export function CustomerView() {
             </div>
             <h2 className="text-xl font-semibold">How ordering works</h2>
           </div>
-          <p className="text-muted-foreground leading-relaxed">
-            When you place an order, it goes directly to the store you ordered from.
-            The store owner contacts you for payment and delivery details.
-          </p>
+          <p className="text-muted-foreground leading-relaxed">When you place an order, it goes directly to the store you ordered from. Then someone from the store contacts you for payment and delivery details. You can also ask the store for details related to a particular product, like a physical store.</p>
         </AnimatedSection>
 
         {/* Transparency & trust */}
