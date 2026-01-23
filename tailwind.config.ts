@@ -74,6 +74,10 @@ export default {
           from: { opacity: "0", transform: "translateY(10px)" },
           to: { opacity: "1", transform: "translateY(0)" },
         },
+        "scale-in": {
+          "0%": { transform: "scale(0.95)", opacity: "0" },
+          "100%": { transform: "scale(1)", opacity: "1" },
+        },
         "float": {
           "0%, 100%": { transform: "translateY(0) rotate(0deg)" },
           "25%": { transform: "translateY(-4px) rotate(0.5deg)" },
@@ -85,6 +89,7 @@ export default {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
         "fade-in": "fade-in 0.3s ease-out",
+        "scale-in": "scale-in 0.25s ease-out",
         "float": "float 15s ease-in-out infinite",
       },
     },

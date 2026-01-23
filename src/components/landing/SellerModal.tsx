@@ -14,17 +14,13 @@ interface SellerModalProps {
 }
 
 interface StepCardProps {
-  step: number;
   icon: React.ReactNode;
   label: string;
-  microText: string;
   onClick: () => void;
   isVisible: boolean;
-  isCompleted: boolean;
-  isClickable: boolean;
 }
 
-function StepCard({ step, icon, label, microText, onClick, isVisible }: StepCardProps) {
+function StepCard({ icon, label, onClick, isVisible }: StepCardProps) {
   if (!isVisible) return null;
 
   return (
@@ -37,11 +33,7 @@ function StepCard({ step, icon, label, microText, onClick, isVisible }: StepCard
       <div className="flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center bg-primary/10 text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
         {icon}
       </div>
-      <div className="flex-1 min-w-0">
-        <span className="text-xs text-muted-foreground font-medium">Step {step}</span>
-        <p className="font-semibold text-lg">{label}</p>
-        <p className="text-sm text-muted-foreground">{microText}</p>
-      </div>
+      <p className="font-semibold text-lg">{label}</p>
     </button>
   );
 }
@@ -136,15 +128,14 @@ export function SellerModal({ open, onOpenChange }: SellerModalProps) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-sm p-0 border-0 bg-transparent shadow-none" blur>
+      <DialogContent className="sm:max-w-sm mx-4 p-0 border-0 bg-transparent shadow-none" blur>
         {steps.map((stepData) => (
           <StepCard
             key={stepData.step}
-            {...stepData}
+            icon={stepData.icon}
+            label={stepData.label}
             onClick={() => handleStepClick(stepData.step)}
             isVisible={stepData.step === currentStep}
-            isCompleted={false}
-            isClickable={true}
           />
         ))}
       </DialogContent>
