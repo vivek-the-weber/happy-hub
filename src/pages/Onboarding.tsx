@@ -1,11 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import { ArrowLeft, Check, X, Loader2 } from 'lucide-react';
 import { z } from 'zod';
-import { Check, X, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Select,
   SelectContent,
@@ -45,21 +44,18 @@ export default function Onboarding() {
   const [debouncedUsername, setDebouncedUsername] = useState('');
   const { data: slugAvailable, isLoading: checkingSlug } = useCheckSlugAvailability(debouncedUsername);
 
-  // Redirect if not logged in
   useEffect(() => {
     if (!authLoading && !user) {
       navigate('/auth', { replace: true });
     }
   }, [user, authLoading, navigate]);
 
-  // Redirect if already has store (only after store query is settled)
   useEffect(() => {
     if (!authLoading && user && storeFetched && store !== null) {
       navigate('/dashboard', { replace: true });
     }
   }, [store, authLoading, user, storeFetched, navigate]);
 
-  // Debounce username check
   useEffect(() => {
     const timer = setTimeout(() => {
       if (username.length >= 3) {
@@ -70,7 +66,6 @@ export default function Onboarding() {
   }, [username]);
 
   const handleUsernameChange = (value: string) => {
-    // Auto-convert to lowercase and remove invalid characters
     const sanitized = value.toLowerCase().replace(/[^a-z0-9]/g, '');
     setUsername(sanitized);
   };
@@ -124,7 +119,6 @@ export default function Onboarding() {
         country,
         whatsapp_number: whatsappNumber,
       });
-      // Set the cache directly with the owner_id to avoid race condition
       queryClient.setQueryData(['my-store', newStore.owner_id], newStore);
       toast.success('Your store is ready! 🎉');
       navigate('/dashboard', { replace: true });
@@ -139,142 +133,146 @@ export default function Onboarding() {
     }
   };
 
-  // Show loading while auth or store is loading
   if (authLoading || storeLoading || (user && !storeFetched)) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-pulse text-muted-foreground">Loading...</div>
+      <div className="min-h-screen bg-surface-inverse flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-background/60" />
       </div>
     );
   }
 
   const showUsernameStatus = username.length >= 3 && !errors.username?.includes('characters');
 
+  const slugStatus = () => {
+    if (!showUsernameStatus) return null;
+    if (checkingSlug) return <Loader2 className="h-4 w-4 animate-spin text-background/60" />;
+    if (slugAvailable) return <Check className="h-4 w-4 text-primary" />;
+    return <X className="h-4 w-4 text-red-400" />;
+  };
+
   return (
-    <div className="min-h-screen bg-background flex flex-col">
-      <header className="container py-4">
-        <Link to="/" className="text-xl font-bold text-primary">
-          happy2buy
+    <div className="min-h-screen bg-surface-inverse text-background flex flex-col">
+      {/* Header */}
+      <header className="p-6 flex items-center justify-between">
+        <Link to="/" className="flex items-center gap-2 text-background/60 hover:text-background transition-colors">
+          <ArrowLeft className="h-5 w-5" />
+          <span className="text-sm">Back</span>
         </Link>
+        <Link to="/" className="text-xl font-bold">happy2buy</Link>
+        <div className="w-16" />
       </header>
 
-      <div className="flex-1 flex items-center justify-center p-4">
-        <Card className="w-full max-w-md">
-          <CardHeader className="text-center">
-            <CardTitle>Set up your store</CardTitle>
-            <CardDescription>
-              Let's get your online store ready in just a minute
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-5">
-              {/* Store Name */}
-              <div className="space-y-2">
-                <Label htmlFor="storeName">Store Name</Label>
-                <Input
-                  id="storeName"
-                  placeholder="e.g. Sarah's Crafts"
-                  value={storeName}
-                  onChange={(e) => setStoreName(e.target.value)}
-                />
-                {errors.storeName && (
-                  <p className="text-sm text-destructive">{errors.storeName}</p>
-                )}
-              </div>
+      {/* Form */}
+      <main className="flex-1 flex flex-col items-center px-6 py-8">
+        <div className="w-full max-w-sm space-y-8">
+          <div className="text-center space-y-2">
+            <h1 className="text-3xl font-bold">Set up your store</h1>
+            <p className="text-background/60">Just a few details to get started</p>
+          </div>
 
-              {/* Store Link (Slug) */}
-              <div className="space-y-2">
-                <Label htmlFor="storeLink">Store Link</Label>
-                <div className="flex">
-                  <div className="relative flex-1">
-                    <Input
-                      id="storeLink"
-                      placeholder="yourstore"
-                      value={username}
-                      onChange={(e) => handleUsernameChange(e.target.value)}
-                      className="rounded-r-none pr-10"
-                    />
-                    {showUsernameStatus && (
-                      <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                        {checkingSlug ? (
-                          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                        ) : slugAvailable ? (
-                          <Check className="h-4 w-4 text-emerald-600 dark:text-emerald-500" />
-                        ) : (
-                          <X className="h-4 w-4 text-destructive" />
-                        )}
-                      </div>
-                    )}
-                  </div>
-                  <div className="inline-flex items-center px-3 rounded-r-md border border-l-0 border-input bg-muted text-muted-foreground text-sm">
-                    .happy2buy.in
-                  </div>
+          <form onSubmit={handleSubmit} className="space-y-5">
+            <div className="space-y-2">
+              <Label htmlFor="storeName" className="text-background/80">Store name</Label>
+              <Input
+                id="storeName"
+                placeholder="e.g. Sarah's Crafts"
+                value={storeName}
+                onChange={(e) => setStoreName(e.target.value)}
+                className="bg-white/5 border-white/10 text-background placeholder:text-background/40 focus:border-primary h-12 rounded-xl"
+              />
+              {errors.storeName && (
+                <p className="text-red-400 text-sm">{errors.storeName}</p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="storeLink" className="text-background/80">Store link</Label>
+              <div className="relative">
+                <Input
+                  id="storeLink"
+                  placeholder="yourstore"
+                  value={username}
+                  onChange={(e) => handleUsernameChange(e.target.value)}
+                  className="bg-white/5 border-white/10 text-background placeholder:text-background/40 focus:border-primary h-12 rounded-xl pr-10"
+                />
+                <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                  {slugStatus()}
                 </div>
-                {errors.username && (
-                  <p className="text-sm text-destructive">{errors.username}</p>
-                )}
               </div>
+              <p className="text-background/40 text-sm">
+                {username ? `${username}.happy2buy.in` : 'yourstore.happy2buy.in'}
+              </p>
+              {errors.username && (
+                <p className="text-red-400 text-sm">{errors.username}</p>
+              )}
+            </div>
 
-              {/* Country */}
-              <div className="space-y-2">
-                <Label htmlFor="country">Country</Label>
-                <Select value={country} onValueChange={setCountry}>
-                  <SelectTrigger id="country">
-                    <SelectValue placeholder="Select your country" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {SUPPORTED_COUNTRIES.map((c) => (
-                      <SelectItem key={c.code} value={c.code}>
-                        {c.flag} {c.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+            <div className="space-y-2">
+              <Label htmlFor="country" className="text-background/80">Country</Label>
+              <Select value={country} onValueChange={setCountry}>
+                <SelectTrigger className="bg-white/5 border-white/10 text-background h-12 rounded-xl [&>svg]:text-background/60">
+                  <SelectValue placeholder="Select your country" />
+                </SelectTrigger>
+                <SelectContent className="bg-zinc-900 border-white/10">
+                  {SUPPORTED_COUNTRIES.map((c) => (
+                    <SelectItem 
+                      key={c.code} 
+                      value={c.code}
+                      className="text-white focus:bg-white/10 focus:text-white"
+                    >
+                      {c.flag} {c.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
-              {/* City */}
-              <div className="space-y-2">
-                <Label htmlFor="city">City</Label>
-                <Input
-                  id="city"
-                  placeholder="e.g. Jakarta"
-                  value={city}
-                  onChange={(e) => setCity(e.target.value)}
-                />
-                {errors.city && (
-                  <p className="text-sm text-destructive">{errors.city}</p>
-                )}
-              </div>
+            <div className="space-y-2">
+              <Label htmlFor="city" className="text-background/80">City</Label>
+              <Input
+                id="city"
+                placeholder="e.g. Mumbai"
+                value={city}
+                onChange={(e) => setCity(e.target.value)}
+                className="bg-white/5 border-white/10 text-background placeholder:text-background/40 focus:border-primary h-12 rounded-xl"
+              />
+              {errors.city && (
+                <p className="text-red-400 text-sm">{errors.city}</p>
+              )}
+            </div>
 
-              {/* WhatsApp */}
-              <div className="space-y-2">
-                <Label htmlFor="whatsapp">WhatsApp Number</Label>
-                <Input
-                  id="whatsapp"
-                  type="tel"
-                  placeholder="+62 812 3456 7890"
-                  value={whatsappNumber}
-                  onChange={(e) => setWhatsappNumber(e.target.value)}
-                />
-                <p className="text-xs text-muted-foreground">
-                  Customers will contact you on WhatsApp
-                </p>
-                {errors.whatsapp && (
-                  <p className="text-sm text-destructive">{errors.whatsapp}</p>
-                )}
-              </div>
+            <div className="space-y-2">
+              <Label htmlFor="whatsapp" className="text-background/80">WhatsApp number</Label>
+              <Input
+                id="whatsapp"
+                type="tel"
+                placeholder="+91 98765 43210"
+                value={whatsappNumber}
+                onChange={(e) => setWhatsappNumber(e.target.value)}
+                className="bg-white/5 border-white/10 text-background placeholder:text-background/40 focus:border-primary h-12 rounded-xl"
+              />
+              <p className="text-background/40 text-xs">
+                Customers will contact you on WhatsApp
+              </p>
+              {errors.whatsapp && (
+                <p className="text-red-400 text-sm">{errors.whatsapp}</p>
+              )}
+            </div>
 
-              <Button 
-                type="submit" 
-                className="w-full" 
-                disabled={isSubmitting || checkingSlug}
-              >
-                {isSubmitting ? 'Creating your store...' : 'Create My Store'}
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
-      </div>
+            <Button
+              type="submit"
+              disabled={isSubmitting || checkingSlug}
+              className="w-full h-12 rounded-xl text-base font-medium mt-6"
+            >
+              {isSubmitting ? (
+                <Loader2 className="h-5 w-5 animate-spin" />
+              ) : (
+                'Create Store'
+              )}
+            </Button>
+          </form>
+        </div>
+      </main>
     </div>
   );
 }

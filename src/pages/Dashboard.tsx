@@ -1,14 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Package, ShoppingBag, Settings, Link as LinkIcon, Copy, Check, Truck, Upload, X } from 'lucide-react';
+import { useNavigate, Link } from 'react-router-dom';
+import { Package, ShoppingBag, Settings, Copy, Check, Truck, Upload, X, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Header } from '@/components/Header';
 import { ProductManager } from '@/components/dashboard/ProductManager';
 import { OrderList } from '@/components/dashboard/OrderList';
 import { ShippingSettings } from '@/components/dashboard/ShippingSettings';
@@ -19,7 +17,7 @@ import { toast } from 'sonner';
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, signOut } = useAuth();
   const { data: store, isLoading: storeLoading, isFetched: storeFetched } = useMyStore();
   const updateStore = useUpdateStore();
 
@@ -33,21 +31,18 @@ export default function Dashboard() {
   const [copied, setCopied] = useState(false);
   const logoInputRef = useRef<HTMLInputElement>(null);
 
-  // Redirect to auth if not logged in
   useEffect(() => {
     if (!authLoading && !user) {
       navigate('/auth', { replace: true });
     }
   }, [user, authLoading, navigate]);
 
-  // Redirect to onboarding if no store (only after store query is settled)
   useEffect(() => {
     if (!authLoading && user && storeFetched && store === null) {
       navigate('/onboarding', { replace: true });
     }
   }, [user, store, authLoading, storeFetched, navigate]);
 
-  // Populate form when store loads
   useEffect(() => {
     if (store) {
       setStoreName(store.name);
@@ -63,7 +58,7 @@ export default function Dashboard() {
     if (!store || !e.target.files || e.target.files.length === 0) return;
 
     const file = e.target.files[0];
-    const maxSize = 2 * 1024 * 1024; // 2MB
+    const maxSize = 2 * 1024 * 1024;
 
     if (file.size > maxSize) {
       toast.error('Logo must be under 2MB');
@@ -151,206 +146,228 @@ export default function Dashboard() {
     }
   };
 
-  // Show loading while auth or store is loading
   if (authLoading || storeLoading || (user && !storeFetched)) {
     return (
-      <div className="min-h-screen bg-background">
-        <Header />
-        <div className="container py-16 text-center text-muted-foreground">
-          Loading...
-        </div>
+      <div className="min-h-screen bg-surface-inverse flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-background/60" />
       </div>
     );
   }
 
-  // No store yet (redirect will happen via useEffect)
   if (!store) {
     return null;
   }
 
-  // Has store - show dashboard
   return (
-    <div className="min-h-screen bg-background">
-      <Header />
-      <div className="container py-6">
-        {/* Store Link Banner */}
-        <Card className="mb-6 bg-accent/50">
-          <CardContent className="py-4">
-            <div className="flex items-center justify-between gap-4 flex-wrap">
-              <div className="flex items-center gap-3">
-                <LinkIcon className="h-5 w-5 text-accent-foreground" />
-                <div>
-                  <p className="text-sm font-medium">Your store link</p>
-                  <p className="text-xs text-muted-foreground">
-                    {store.slug}.happy2buy.in
-                  </p>
-                </div>
-              </div>
-              <Button variant="secondary" size="sm" onClick={copyStoreLink}>
-                {copied ? <Check className="h-4 w-4 mr-2" /> : <Copy className="h-4 w-4 mr-2" />}
-                {copied ? 'Copied!' : 'Copy Link'}
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+    <div className="min-h-screen bg-surface-inverse text-background">
+      {/* Header */}
+      <header className="sticky top-0 z-50 bg-surface-inverse/95 backdrop-blur border-b border-white/10">
+        <div className="container flex items-center justify-between h-14">
+          <Link to="/" className="text-xl font-bold">happy2buy</Link>
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={() => signOut()}
+            className="text-background/60 hover:text-background hover:bg-white/5"
+          >
+            Sign Out
+          </Button>
+        </div>
+      </header>
 
-        <Tabs defaultValue="products">
-          <TabsList className="mb-6">
-            <TabsTrigger value="products" className="gap-2">
-              <Package className="h-4 w-4" />
+      {/* Store Link Banner */}
+      <div className="border-b border-white/10 bg-white/5">
+        <div className="container py-4">
+          <div className="flex items-center justify-between gap-4">
+            <div className="min-w-0">
+              <p className="text-sm text-background/60">Your store link</p>
+              <p className="font-medium truncate">{store.slug}.happy2buy.in</p>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={copyStoreLink}
+              className="shrink-0 border-white/20 bg-white/5 text-background hover:bg-white/10"
+            >
+              {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+              <span className="ml-2 hidden sm:inline">{copied ? 'Copied' : 'Copy'}</span>
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <main className="container py-6">
+        <Tabs defaultValue="products" className="space-y-6">
+          <TabsList className="bg-white/5 border border-white/10 p-1">
+            <TabsTrigger 
+              value="products" 
+              className="data-[state=active]:bg-white/10 data-[state=active]:text-background text-background/60"
+            >
+              <Package className="h-4 w-4 mr-2" />
               Products
             </TabsTrigger>
-            <TabsTrigger value="orders" className="gap-2">
-              <ShoppingBag className="h-4 w-4" />
+            <TabsTrigger 
+              value="orders"
+              className="data-[state=active]:bg-white/10 data-[state=active]:text-background text-background/60"
+            >
+              <ShoppingBag className="h-4 w-4 mr-2" />
               Orders
             </TabsTrigger>
-            <TabsTrigger value="shipping" className="gap-2">
-              <Truck className="h-4 w-4" />
+            <TabsTrigger 
+              value="shipping"
+              className="data-[state=active]:bg-white/10 data-[state=active]:text-background text-background/60"
+            >
+              <Truck className="h-4 w-4 mr-2" />
               Shipping
             </TabsTrigger>
-            <TabsTrigger value="settings" className="gap-2">
-              <Settings className="h-4 w-4" />
+            <TabsTrigger 
+              value="settings"
+              className="data-[state=active]:bg-white/10 data-[state=active]:text-background text-background/60"
+            >
+              <Settings className="h-4 w-4 mr-2" />
               Settings
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="products">
+          <TabsContent value="products" className="mt-6">
             <ProductManager store={store} />
           </TabsContent>
 
-          <TabsContent value="orders">
+          <TabsContent value="orders" className="mt-6">
             <OrderList store={store} />
           </TabsContent>
 
-          <TabsContent value="shipping">
+          <TabsContent value="shipping" className="mt-6">
             <ShippingSettings store={store} />
           </TabsContent>
 
-          <TabsContent value="settings">
-            <div className="space-y-6">
-              {/* Logo Upload Card */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Store Logo</CardTitle>
-                  <CardDescription>
-                    Upload a logo for your store. This will appear in the header when customers visit your store.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex items-center gap-6">
-                    <Avatar className="h-20 w-20">
-                      <AvatarImage src={logoUrl || undefined} alt={store.name} />
-                      <AvatarFallback className="bg-primary text-primary-foreground text-2xl font-semibold">
-                        {store.name.charAt(0).toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="flex flex-col gap-2">
-                      <input
-                        ref={logoInputRef}
-                        type="file"
-                        accept="image/*"
-                        onChange={handleLogoUpload}
-                        className="hidden"
-                        id="logo-upload"
-                      />
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => logoInputRef.current?.click()}
-                        disabled={uploadingLogo}
-                      >
-                        <Upload className="h-4 w-4 mr-2" />
-                        {uploadingLogo ? 'Uploading...' : 'Upload Logo'}
-                      </Button>
-                      {logoUrl && (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={handleRemoveLogo}
-                          className="text-destructive hover:text-destructive"
-                        >
-                          <X className="h-4 w-4 mr-2" />
-                          Remove
-                        </Button>
-                      )}
-                      <p className="text-xs text-muted-foreground">
-                        Recommended: Square image, max 2MB
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Store Settings Card */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Store Information</CardTitle>
-                  <CardDescription>
-                    Update your store details
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <form onSubmit={handleUpdateStore} className="space-y-4 max-w-md">
-                    <div className="space-y-2">
-                      <Label htmlFor="editStoreName">Store Name</Label>
-                      <Input
-                        id="editStoreName"
-                        value={storeName}
-                        onChange={(e) => setStoreName(e.target.value)}
-                      />
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <Label htmlFor="editBio">Description</Label>
-                      <Textarea
-                        id="editBio"
-                        value={storeBio}
-                        onChange={(e) => setStoreBio(e.target.value)}
-                        rows={2}
-                      />
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <Label htmlFor="editCity">City</Label>
-                      <Input
-                        id="editCity"
-                        value={storeCity}
-                        onChange={(e) => setStoreCity(e.target.value)}
-                      />
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <Label htmlFor="editWhatsapp">WhatsApp Number</Label>
-                      <Input
-                        id="editWhatsapp"
-                        type="tel"
-                        value={whatsappNumber}
-                        onChange={(e) => setWhatsappNumber(e.target.value)}
-                      />
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <Label htmlFor="editPayment">Payment Instructions</Label>
-                      <Textarea
-                        id="editPayment"
-                        value={paymentInstructions}
-                        onChange={(e) => setPaymentInstructions(e.target.value)}
-                        rows={3}
-                      />
-                    </div>
-                    
-                    <Button type="submit" disabled={updateStore.isPending}>
-                      {updateStore.isPending ? 'Saving...' : 'Save Changes'}
+          <TabsContent value="settings" className="mt-6 space-y-6">
+            {/* Logo Upload */}
+            <div className="bg-white/5 border border-white/10 rounded-2xl p-6">
+              <h3 className="text-lg font-semibold mb-4">Store Logo</h3>
+              <p className="text-sm text-background/60 mb-4">
+                Upload a logo for your store. This will appear in the header when customers visit.
+              </p>
+              <div className="flex items-center gap-6">
+                <Avatar className="h-20 w-20">
+                  <AvatarImage src={logoUrl || undefined} alt={store.name} />
+                  <AvatarFallback className="bg-primary text-primary-foreground text-2xl font-semibold">
+                    {store.name.charAt(0).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex flex-col gap-2">
+                  <input
+                    ref={logoInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleLogoUpload}
+                    className="hidden"
+                    id="logo-upload"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => logoInputRef.current?.click()}
+                    disabled={uploadingLogo}
+                    className="border-white/20 bg-white/5 text-background hover:bg-white/10"
+                  >
+                    <Upload className="h-4 w-4 mr-2" />
+                    {uploadingLogo ? 'Uploading...' : 'Upload Logo'}
+                  </Button>
+                  {logoUrl && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleRemoveLogo}
+                      className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                    >
+                      <X className="h-4 w-4 mr-2" />
+                      Remove
                     </Button>
-                  </form>
-                </CardContent>
-              </Card>
+                  )}
+                  <p className="text-xs text-background/40">
+                    Recommended: Square image, max 2MB
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Store Info Form */}
+            <div className="bg-white/5 border border-white/10 rounded-2xl p-6">
+              <h3 className="text-lg font-semibold mb-4">Store Information</h3>
+              <form onSubmit={handleUpdateStore} className="space-y-5 max-w-md">
+                <div className="space-y-2">
+                  <Label htmlFor="storeName" className="text-background/80">Store name</Label>
+                  <Input
+                    id="storeName"
+                    value={storeName}
+                    onChange={(e) => setStoreName(e.target.value)}
+                    className="bg-white/5 border-white/10 text-background placeholder:text-background/40 focus:border-primary h-12 rounded-xl"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="bio" className="text-background/80">Description</Label>
+                  <Textarea
+                    id="bio"
+                    placeholder="Tell customers about your store..."
+                    value={storeBio}
+                    onChange={(e) => setStoreBio(e.target.value)}
+                    className="bg-white/5 border-white/10 text-background placeholder:text-background/40 focus:border-primary rounded-xl min-h-[80px]"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="city" className="text-background/80">City</Label>
+                  <Input
+                    id="city"
+                    value={storeCity}
+                    onChange={(e) => setStoreCity(e.target.value)}
+                    className="bg-white/5 border-white/10 text-background placeholder:text-background/40 focus:border-primary h-12 rounded-xl"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="whatsapp" className="text-background/80">WhatsApp Number</Label>
+                  <Input
+                    id="whatsapp"
+                    type="tel"
+                    value={whatsappNumber}
+                    onChange={(e) => setWhatsappNumber(e.target.value)}
+                    className="bg-white/5 border-white/10 text-background placeholder:text-background/40 focus:border-primary h-12 rounded-xl"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="payment" className="text-background/80">Payment instructions</Label>
+                  <Textarea
+                    id="payment"
+                    placeholder="e.g., UPI: yourname@upi"
+                    value={paymentInstructions}
+                    onChange={(e) => setPaymentInstructions(e.target.value)}
+                    className="bg-white/5 border-white/10 text-background placeholder:text-background/40 focus:border-primary rounded-xl min-h-[100px]"
+                  />
+                </div>
+
+                <Button
+                  type="submit"
+                  disabled={updateStore.isPending}
+                  className="h-12 rounded-xl"
+                >
+                  {updateStore.isPending ? (
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                  ) : (
+                    'Save Changes'
+                  )}
+                </Button>
+              </form>
             </div>
           </TabsContent>
         </Tabs>
-      </div>
+      </main>
     </div>
   );
 }
