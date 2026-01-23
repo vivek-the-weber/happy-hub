@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { ChevronDown, ChevronUp, Phone, MapPin, MessageSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import {
   Select,
@@ -19,10 +18,10 @@ interface OrderListProps {
 }
 
 const statusColors: Record<Order['status'], string> = {
-  pending: 'bg-yellow-100 text-yellow-800',
-  confirmed: 'bg-blue-100 text-blue-800',
-  completed: 'bg-green-100 text-green-800',
-  cancelled: 'bg-red-100 text-red-800',
+  pending: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
+  confirmed: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
+  completed: 'bg-primary/20 text-primary border-primary/30',
+  cancelled: 'bg-red-500/20 text-red-400 border-red-500/30',
 };
 
 export function OrderList({ store }: OrderListProps) {
@@ -30,27 +29,27 @@ export function OrderList({ store }: OrderListProps) {
   const [expandedOrder, setExpandedOrder] = useState<string | null>(null);
 
   if (isLoading) {
-    return <div className="text-center py-8 text-muted-foreground">Loading orders...</div>;
+    return <div className="text-center py-8 text-background/60">Loading orders...</div>;
   }
 
   if (!orders || orders.length === 0) {
     return (
-      <Card className="py-12">
-        <CardContent className="text-center">
-          <p className="text-muted-foreground">No orders yet</p>
-          <p className="text-sm text-muted-foreground mt-1">
+      <div className="bg-white/5 border border-white/10 rounded-2xl py-12">
+        <div className="text-center">
+          <p className="text-background/60">No orders yet</p>
+          <p className="text-sm text-background/40 mt-1">
             Share your store link to start receiving orders!
           </p>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     );
   }
 
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
-        <h2 className="text-xl font-semibold">Orders</h2>
-        <p className="text-sm text-muted-foreground">
+        <h2 className="text-xl font-semibold text-background">Orders</h2>
+        <p className="text-sm text-background/60">
           {orders.length} order{orders.length !== 1 ? 's' : ''}
         </p>
       </div>
@@ -100,39 +99,46 @@ function OrderCard({ order, storeId, storeCountry, isExpanded, onToggle }: Order
   };
 
   return (
-    <Card>
-      <CardHeader className="py-4 cursor-pointer" onClick={onToggle}>
+    <div className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden">
+      <div 
+        className="p-4 cursor-pointer hover:bg-white/5 transition-colors" 
+        onClick={onToggle}
+      >
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div>
-              <CardTitle className="text-base">{order.customer_name}</CardTitle>
-              <p className="text-sm text-muted-foreground">{formatDate(order.created_at)}</p>
+              <h3 className="font-medium text-background">{order.customer_name}</h3>
+              <p className="text-sm text-background/50">{formatDate(order.created_at)}</p>
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <span className="font-semibold">{formatPrice(order.total_amount, storeCountry)}</span>
-            <Badge className={statusColors[order.status]}>{order.status}</Badge>
-            {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+            <span className="font-semibold text-background">{formatPrice(order.total_amount, storeCountry)}</span>
+            <Badge className={`${statusColors[order.status]} border`}>{order.status}</Badge>
+            {isExpanded ? (
+              <ChevronUp className="h-4 w-4 text-background/60" />
+            ) : (
+              <ChevronDown className="h-4 w-4 text-background/60" />
+            )}
           </div>
         </div>
-      </CardHeader>
+      </div>
 
       {isExpanded && (
-        <CardContent className="pt-0 space-y-4">
+        <div className="px-4 pb-4 space-y-4">
           {/* Customer Info */}
           <div className="space-y-2 text-sm">
-            <div className="flex items-center gap-2 text-muted-foreground">
+            <div className="flex items-center gap-2 text-background/70">
               <Phone className="h-4 w-4" />
-              <a href={`tel:${order.customer_phone}`} className="hover:underline">
+              <a href={`tel:${order.customer_phone}`} className="hover:text-primary transition-colors">
                 {order.customer_phone}
               </a>
             </div>
-            <div className="flex items-start gap-2 text-muted-foreground">
+            <div className="flex items-start gap-2 text-background/70">
               <MapPin className="h-4 w-4 mt-0.5" />
               <span>{order.customer_address}</span>
             </div>
             {order.customer_notes && (
-              <div className="flex items-start gap-2 text-muted-foreground">
+              <div className="flex items-start gap-2 text-background/70">
                 <MessageSquare className="h-4 w-4 mt-0.5" />
                 <span>{order.customer_notes}</span>
               </div>
@@ -141,15 +147,15 @@ function OrderCard({ order, storeId, storeCountry, isExpanded, onToggle }: Order
 
           {/* Order Items */}
           {items && items.length > 0 && (
-            <div className="border-t pt-4">
-              <p className="text-sm font-medium mb-2">Items</p>
+            <div className="border-t border-white/10 pt-4">
+              <p className="text-sm font-medium text-background/80 mb-2">Items</p>
               <div className="space-y-1">
                 {items.map((item) => (
                   <div key={item.id} className="flex justify-between text-sm">
-                    <span>
+                    <span className="text-background">
                       {item.product_name} × {item.quantity}
                     </span>
-                    <span className="text-muted-foreground">
+                    <span className="text-background/60">
                       {formatPrice(item.product_price * item.quantity, storeCountry)}
                     </span>
                   </div>
@@ -159,24 +165,24 @@ function OrderCard({ order, storeId, storeCountry, isExpanded, onToggle }: Order
           )}
 
           {/* Status Update */}
-          <div className="border-t pt-4">
+          <div className="border-t border-white/10 pt-4">
             <div className="flex items-center gap-3">
-              <span className="text-sm font-medium">Update status:</span>
+              <span className="text-sm font-medium text-background/80">Update status:</span>
               <Select value={order.status} onValueChange={(value) => handleStatusChange(value as Order['status'])}>
-                <SelectTrigger className="w-40">
+                <SelectTrigger className="w-40 bg-white/5 border-white/10 text-background rounded-xl">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="pending">Pending</SelectItem>
-                  <SelectItem value="confirmed">Confirmed</SelectItem>
-                  <SelectItem value="completed">Completed</SelectItem>
-                  <SelectItem value="cancelled">Cancelled</SelectItem>
+                <SelectContent className="bg-foreground border-white/10">
+                  <SelectItem value="pending" className="text-background hover:bg-white/5">Pending</SelectItem>
+                  <SelectItem value="confirmed" className="text-background hover:bg-white/5">Confirmed</SelectItem>
+                  <SelectItem value="completed" className="text-background hover:bg-white/5">Completed</SelectItem>
+                  <SelectItem value="cancelled" className="text-background hover:bg-white/5">Cancelled</SelectItem>
                 </SelectContent>
               </Select>
             </div>
           </div>
-        </CardContent>
+        </div>
       )}
-    </Card>
+    </div>
   );
 }
