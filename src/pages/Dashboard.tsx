@@ -136,10 +136,11 @@ export default function Dashboard() {
     }
   };
 
+  const getStoreUrl = () => `https://${store?.slug}.happy2buy.in`;
+
   const copyStoreLink = () => {
     if (store) {
-      const link = `https://${store.slug}.happy2buy.in`;
-      navigator.clipboard.writeText(link);
+      navigator.clipboard.writeText(getStoreUrl());
       setCopied(true);
       toast.success('Link copied!');
       setTimeout(() => setCopied(false), 2000);

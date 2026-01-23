@@ -9,9 +9,14 @@ import { ProductDetailModal } from '@/components/ProductDetailModal';
 import { useStoreBySlug, useStoreProducts, Product } from '@/hooks/useStore';
 import { formatPrice } from '@/lib/currency';
 
-export default function StorePage() {
-  const { slug } = useParams<{ slug: string }>();
-  const { data: store, isLoading: storeLoading } = useStoreBySlug(slug || '');
+interface StorePageProps {
+  subdomainSlug?: string;
+}
+
+export default function StorePage({ subdomainSlug }: StorePageProps) {
+  const { slug: pathSlug } = useParams<{ slug: string }>();
+  const slug = subdomainSlug || pathSlug || '';
+  const { data: store, isLoading: storeLoading } = useStoreBySlug(slug);
   const { data: products, isLoading: productsLoading } = useStoreProducts(store?.id);
   
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
