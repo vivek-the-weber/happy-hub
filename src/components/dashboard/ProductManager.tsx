@@ -4,7 +4,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Card, CardContent } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import {
   Dialog,
@@ -61,7 +60,6 @@ export function ProductManager({ store }: ProductManagerProps) {
       setName(product.name);
       setDescription(product.description || '');
       setPrice(product.price.toString());
-      // Use image_urls if available, fallback to image_url for backward compatibility
       const urls = product.image_urls?.length > 0 
         ? product.image_urls 
         : product.image_url 
@@ -86,7 +84,6 @@ export function ProductManager({ store }: ProductManagerProps) {
 
     const filesToUpload = Array.from(files).slice(0, remainingSlots);
     
-    // Validate file sizes
     for (const file of filesToUpload) {
       if (file.size > MAX_FILE_SIZE) {
         toast.error(`${file.name} is too large. Maximum size is 5MB per image.`);
@@ -122,7 +119,6 @@ export function ProductManager({ store }: ProductManagerProps) {
       console.error(error);
     } finally {
       setIsUploading(false);
-      // Reset the input so the same file can be selected again
       e.target.value = '';
     }
   };
@@ -202,45 +198,48 @@ export function ProductManager({ store }: ProductManagerProps) {
   };
 
   if (isLoading) {
-    return <div className="text-center py-8 text-muted-foreground">Loading products...</div>;
+    return <div className="text-center py-8 text-background/60">Loading products...</div>;
   }
 
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h2 className="text-xl font-semibold">Products</h2>
-          <p className="text-sm text-muted-foreground">
+          <h2 className="text-xl font-semibold text-background">Products</h2>
+          <p className="text-sm text-background/60">
             {products?.length || 0} product{products?.length !== 1 ? 's' : ''}
           </p>
         </div>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
-            <Button onClick={() => openDialog()}>
+            <Button onClick={() => openDialog()} className="rounded-xl">
               <Plus className="h-4 w-4 mr-2" />
               Add Product
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-h-[90vh] overflow-y-auto">
+          <DialogContent className="max-h-[90vh] overflow-y-auto bg-foreground border-white/10">
             <DialogHeader>
-              <DialogTitle>{editingProduct ? 'Edit Product' : 'Add Product'}</DialogTitle>
-              <DialogDescription>
+              <DialogTitle className="text-background">
+                {editingProduct ? 'Edit Product' : 'Add Product'}
+              </DialogTitle>
+              <DialogDescription className="text-background/60">
                 {editingProduct ? 'Update your product details' : 'Add a new product to your store'}
               </DialogDescription>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="productName">Name *</Label>
+                <Label htmlFor="productName" className="text-background/80">Name *</Label>
                 <Input
                   id="productName"
                   placeholder="Product name"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
+                  className="bg-white/5 border-white/10 text-background placeholder:text-background/40 focus:border-primary h-12 rounded-xl"
                 />
               </div>
               
               <div className="space-y-2">
-                <Label htmlFor="productPrice">Price *</Label>
+                <Label htmlFor="productPrice" className="text-background/80">Price *</Label>
                 <Input
                   id="productPrice"
                   type="number"
@@ -249,35 +248,37 @@ export function ProductManager({ store }: ProductManagerProps) {
                   placeholder="0.00"
                   value={price}
                   onChange={(e) => setPrice(e.target.value)}
+                  className="bg-white/5 border-white/10 text-background placeholder:text-background/40 focus:border-primary h-12 rounded-xl"
                 />
               </div>
               
               <div className="space-y-2">
-                <Label htmlFor="productDescription">Description</Label>
+                <Label htmlFor="productDescription" className="text-background/80">Description</Label>
                 <Textarea
                   id="productDescription"
                   placeholder="Optional description"
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   rows={2}
+                  className="bg-white/5 border-white/10 text-background placeholder:text-background/40 focus:border-primary rounded-xl resize-none"
                 />
               </div>
               
               <div className="space-y-2">
-                <Label>Images ({imageUrls.length}/{MAX_IMAGES})</Label>
+                <Label className="text-background/80">Images ({imageUrls.length}/{MAX_IMAGES})</Label>
                 <div className="grid grid-cols-5 gap-2">
                   {imageUrls.map((url, index) => (
                     <div key={index} className="relative aspect-square">
                       <img 
                         src={url} 
                         alt={`Product ${index + 1}`} 
-                        className="w-full h-full object-cover rounded-md border"
+                        className="w-full h-full object-cover rounded-lg border border-white/10"
                       />
                       <Button
                         type="button"
                         variant="destructive"
                         size="icon"
-                        className="absolute -top-2 -right-2 h-5 w-5"
+                        className="absolute -top-2 -right-2 h-5 w-5 rounded-full"
                         onClick={() => removeImage(index)}
                       >
                         <X className="h-3 w-3" />
@@ -297,33 +298,38 @@ export function ProductManager({ store }: ProductManagerProps) {
                       />
                       <label 
                         htmlFor="imageUpload"
-                        className="flex flex-col items-center justify-center w-full h-full border-2 border-dashed rounded-md cursor-pointer hover:border-primary transition-colors"
+                        className="flex flex-col items-center justify-center w-full h-full border-2 border-dashed border-white/20 rounded-lg cursor-pointer hover:border-primary transition-colors"
                       >
                         {isUploading ? (
-                          <span className="text-xs text-muted-foreground">Uploading...</span>
+                          <span className="text-xs text-background/60">Uploading...</span>
                         ) : (
                           <>
-                            <Upload className="h-5 w-5 text-muted-foreground mb-1" />
-                            <span className="text-xs text-muted-foreground">Add</span>
+                            <Upload className="h-5 w-5 text-background/60 mb-1" />
+                            <span className="text-xs text-background/60">Add</span>
                           </>
                         )}
                       </label>
                     </div>
                   )}
                 </div>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-background/50">
                   Up to {MAX_IMAGES} images, 5MB max each
                 </p>
               </div>
               
               <div className="flex gap-2 pt-4">
-                <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={() => setIsDialogOpen(false)}
+                  className="border-white/10 text-background hover:bg-white/5 rounded-xl"
+                >
                   Cancel
                 </Button>
                 <Button 
                   type="submit" 
                   disabled={createProduct.isPending || updateProduct.isPending}
-                  className="flex-1"
+                  className="flex-1 rounded-xl"
                 >
                   {editingProduct ? 'Save Changes' : 'Add Product'}
                 </Button>
@@ -334,15 +340,15 @@ export function ProductManager({ store }: ProductManagerProps) {
       </div>
 
       {products?.length === 0 ? (
-        <Card className="py-12">
-          <CardContent className="text-center">
-            <p className="text-muted-foreground mb-4">No products yet</p>
-            <Button onClick={() => openDialog()}>
+        <div className="bg-white/5 border border-white/10 rounded-2xl py-12">
+          <div className="text-center">
+            <p className="text-background/60 mb-4">No products yet</p>
+            <Button onClick={() => openDialog()} className="rounded-xl">
               <Plus className="h-4 w-4 mr-2" />
               Add Your First Product
             </Button>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       ) : (
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {products?.map((product) => {
@@ -350,8 +356,11 @@ export function ProductManager({ store }: ProductManagerProps) {
             const imageCount = product.image_urls?.length || (product.image_url ? 1 : 0);
             
             return (
-              <Card key={product.id} className={!product.is_available ? 'opacity-60' : ''}>
-                <div className="aspect-square bg-muted relative">
+              <div 
+                key={product.id} 
+                className={`bg-white/5 border border-white/10 rounded-2xl overflow-hidden ${!product.is_available ? 'opacity-60' : ''}`}
+              >
+                <div className="aspect-square bg-white/5 relative">
                   {displayImage ? (
                     <>
                       <img
@@ -366,13 +375,13 @@ export function ProductManager({ store }: ProductManagerProps) {
                       )}
                     </>
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center text-muted-foreground text-sm">
+                    <div className="w-full h-full flex items-center justify-center text-background/40 text-sm">
                       No image
                     </div>
                   )}
                 </div>
-                <CardContent className="p-4">
-                  <h3 className="font-medium text-sm line-clamp-1 mb-1">{product.name}</h3>
+                <div className="p-4">
+                  <h3 className="font-medium text-sm text-background line-clamp-1 mb-1">{product.name}</h3>
                   <p className="text-lg font-semibold text-primary mb-3">
                     {formatPrice(product.price, store.country)}
                   </p>
@@ -383,7 +392,7 @@ export function ProductManager({ store }: ProductManagerProps) {
                         checked={product.is_available}
                         onCheckedChange={() => handleToggleAvailability(product)}
                       />
-                      <span className="text-xs text-muted-foreground">
+                      <span className="text-xs text-background/60">
                         {product.is_available ? 'Available' : 'Sold out'}
                       </span>
                     </div>
@@ -393,7 +402,7 @@ export function ProductManager({ store }: ProductManagerProps) {
                     <Button 
                       variant="outline" 
                       size="sm" 
-                      className="flex-1"
+                      className="flex-1 border-white/10 text-background hover:bg-white/5 rounded-xl"
                       onClick={() => openDialog(product)}
                     >
                       <Edit2 className="h-3 w-3 mr-1" />
@@ -402,13 +411,14 @@ export function ProductManager({ store }: ProductManagerProps) {
                     <Button 
                       variant="outline" 
                       size="sm"
+                      className="border-white/10 text-background hover:bg-white/5 rounded-xl"
                       onClick={() => handleDelete(product)}
                     >
                       <Trash2 className="h-3 w-3" />
                     </Button>
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+              </div>
             );
           })}
         </div>
