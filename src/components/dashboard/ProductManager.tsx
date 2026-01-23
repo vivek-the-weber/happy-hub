@@ -384,15 +384,11 @@ export function ProductManager({ store }: ProductManagerProps) {
                     <span className="text-sm font-semibold text-background">
                       {formatPrice(product.price, store.country)}
                     </span>
-                    <span 
-                      className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${
-                        product.is_available 
-                          ? 'bg-primary/20 text-primary' 
-                          : 'bg-destructive/20 text-destructive'
-                      }`}
-                    >
-                      {product.is_available ? 'ACTIVE' : 'SOLD OUT'}
-                    </span>
+                    <Switch
+                      checked={product.is_available}
+                      onCheckedChange={() => handleToggleAvailability(product)}
+                      className="h-4 w-7 data-[state=unchecked]:bg-white/20 [&>span]:h-3 [&>span]:w-3 [&>span]:data-[state=checked]:translate-x-3"
+                    />
                   </div>
                 </div>
 
@@ -405,23 +401,10 @@ export function ProductManager({ store }: ProductManagerProps) {
                     <Edit2 className="h-4 w-4" />
                   </button>
                   <button
-                    onClick={() => handleToggleAvailability(product)}
-                    className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors ${
-                      product.is_available 
-                        ? 'bg-destructive/10 border border-destructive/20 text-destructive hover:bg-destructive/20' 
-                        : 'bg-primary/10 border border-primary/20 text-primary hover:bg-primary/20'
-                    }`}
+                    onClick={() => handleDelete(product)}
+                    className="w-10 h-10 rounded-xl bg-destructive/10 border border-destructive/20 flex items-center justify-center text-destructive hover:bg-destructive/20 transition-colors"
                   >
-                    {product.is_available ? (
-                      <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <rect x="6" y="4" width="4" height="16" rx="1" />
-                        <rect x="14" y="4" width="4" height="16" rx="1" />
-                      </svg>
-                    ) : (
-                      <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M8 5v14l11-7z" />
-                      </svg>
-                    )}
+                    <Trash2 className="h-4 w-4" />
                   </button>
                 </div>
               </div>
