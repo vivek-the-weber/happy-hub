@@ -403,7 +403,7 @@ export function ProductManager({ store }: ProductManagerProps) {
                     <Button 
                       variant="outline" 
                       size="sm" 
-                      className="flex-1 border-white/10 text-background hover:bg-white/5 rounded-xl"
+                      className="flex-1 bg-white/5 border-white/10 text-background hover:bg-white/10 rounded-xl"
                       onClick={() => openDialog(product)}
                     >
                       <Edit2 className="h-3 w-3 mr-1" />
@@ -412,7 +412,7 @@ export function ProductManager({ store }: ProductManagerProps) {
                     <Button 
                       variant="outline" 
                       size="sm"
-                      className="border-white/10 text-background hover:bg-white/5 rounded-xl"
+                      className="bg-white/5 border-white/10 text-background hover:bg-white/10 rounded-xl"
                       onClick={() => handleDelete(product)}
                     >
                       <Trash2 className="h-3 w-3" />
