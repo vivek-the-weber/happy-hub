@@ -77,16 +77,14 @@ export function CustomerView() {
             If you have questions about an order, contact the store directly.
             For platform-related issues, reach happy2buy support.
           </p>
-          <div className="flex flex-wrap gap-4 pt-2">
+          <div className="flex-wrap pt-2 flex-col flex items-start justify-center gap-[8px]">
             <a href="mailto:support@happy2buy.in" className="text-sm text-primary hover:text-foreground transition-colors">
               support@happy2buy.in
             </a>
             <a target="_blank" rel="noopener noreferrer" className="text-sm text-primary hover:text-foreground transition-colors" href="https://instagram.com/happy2buyy">
               Instagram
             </a>
-            <a href="https://twitter.com/happy2buy" target="_blank" rel="noopener noreferrer" className="text-sm text-primary hover:text-foreground transition-colors">
-              Twitter/X
-            </a>
+            
           </div>
         </AnimatedSection>
 
