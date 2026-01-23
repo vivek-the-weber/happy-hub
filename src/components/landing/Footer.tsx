@@ -17,18 +17,6 @@ export function Footer({ dark = false }: FooterProps) {
             "flex flex-wrap items-center justify-center gap-6 text-sm order-first sm:order-none",
             dark ? "text-background/60" : "text-muted-foreground"
           )}>
-            <Link to="/about" className={cn(
-              "transition-colors",
-              dark ? "hover:text-background" : "hover:text-foreground"
-            )}>
-              About
-            </Link>
-            <a href="mailto:support@happy2buy.in" className={cn(
-              "transition-colors",
-              dark ? "hover:text-background" : "hover:text-foreground"
-            )}>
-              Contact
-            </a>
             <Link to="/privacy" className={cn(
               "transition-colors",
               dark ? "hover:text-background" : "hover:text-foreground"
