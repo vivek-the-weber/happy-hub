@@ -136,6 +136,7 @@ export function ShippingSettings({ store }: ShippingSettingsProps) {
                 id="freeShipping"
                 checked={freeShipping}
                 onCheckedChange={setFreeShipping}
+                className="data-[state=unchecked]:bg-white/20"
               />
             </div>
 

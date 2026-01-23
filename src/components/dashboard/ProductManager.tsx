@@ -391,6 +391,7 @@ export function ProductManager({ store }: ProductManagerProps) {
                       <Switch
                         checked={product.is_available}
                         onCheckedChange={() => handleToggleAvailability(product)}
+                        className="data-[state=unchecked]:bg-white/20"
                       />
                       <span className="text-xs text-background/60">
                         {product.is_available ? 'Available' : 'Sold out'}
