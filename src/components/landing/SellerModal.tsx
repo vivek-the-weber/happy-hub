@@ -28,7 +28,7 @@ function StepCard({ icon, label, onClick, isVisible }: StepCardProps) {
       onClick={onClick}
       className={cn(
         "inline-flex items-center gap-3 p-4 rounded-2xl border border-border bg-card transition-all duration-300 text-left group animate-scale-in shadow-lg hover:shadow-xl cursor-pointer",
-        "min-w-[280px]"
+        "min-w-[200px]"
       )}
     >
       <div className="flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center bg-primary/10 text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
