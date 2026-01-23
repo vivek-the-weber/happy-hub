@@ -9,7 +9,7 @@ export default function Index() {
   const [selectedRole, setSelectedRole] = useState<'customer' | 'seller' | null>(null);
 
   return (
-    <div className="min-h-screen flex flex-col bg-foreground text-background">
+    <div className="min-h-screen flex flex-col bg-surface-inverse text-background">
       {/* Header */}
       <header className="p-6 text-center">
         <h1 className="text-xl font-bold">happy2buy</h1>
