@@ -42,6 +42,14 @@ export function SellerModal({ open, onOpenChange }: SellerModalProps) {
   const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState(1);
   const [completedSteps, setCompletedSteps] = useState<number[]>([]);
+  const [randomPosition, setRandomPosition] = useState({ x: 50, y: 50 });
+
+  // Generate random position when step changes
+  useEffect(() => {
+    const x = Math.random() * 60 + 20; // 20% to 80%
+    const y = Math.random() * 50 + 25; // 25% to 75%
+    setRandomPosition({ x, y });
+  }, [currentStep]);
 
   // Reset state when modal opens
   useEffect(() => {
@@ -128,15 +136,24 @@ export function SellerModal({ open, onOpenChange }: SellerModalProps) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-fit mx-4 p-0 border-0 bg-transparent shadow-none flex items-center justify-center" blur>
+      <DialogContent className="w-full h-full max-w-none p-0 border-0 bg-transparent shadow-none" blur>
         {steps.map((stepData) => (
-          <StepCard
+          <div
             key={stepData.step}
-            icon={stepData.icon}
-            label={stepData.label}
-            onClick={() => handleStepClick(stepData.step)}
-            isVisible={stepData.step === currentStep}
-          />
+            style={{
+              position: 'absolute',
+              left: `${randomPosition.x}%`,
+              top: `${randomPosition.y}%`,
+              transform: 'translate(-50%, -50%)'
+            }}
+          >
+            <StepCard
+              icon={stepData.icon}
+              label={stepData.label}
+              onClick={() => handleStepClick(stepData.step)}
+              isVisible={stepData.step === currentStep}
+            />
+          </div>
         ))}
       </DialogContent>
     </Dialog>
