@@ -74,7 +74,7 @@ export default function Index() {
         {selectedRole === 'seller' && <SellerView />}
       </main>
 
-      <Footer dark={selectedRole !== 'customer'} />
+      <Footer dark />
     </div>
   );
 }
