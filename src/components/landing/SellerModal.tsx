@@ -1,14 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { UserPlus, Store, Package, Share2, Check } from 'lucide-react';
+import { UserPlus, Store, Package, Share2 } from 'lucide-react';
 import confetti from 'canvas-confetti';
-import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
 } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 
@@ -28,34 +24,22 @@ interface StepCardProps {
   isClickable: boolean;
 }
 
-function StepCard({ step, icon, label, microText, onClick, isVisible, isCompleted, isClickable }: StepCardProps) {
+function StepCard({ step, icon, label, microText, onClick, isVisible }: StepCardProps) {
   if (!isVisible) return null;
 
   return (
     <button
       onClick={onClick}
-      disabled={!isClickable}
       className={cn(
-        "w-full flex items-center gap-4 p-4 rounded-xl border transition-all duration-300 text-left group animate-fade-in",
-        isCompleted 
-          ? "border-primary/50 bg-primary/5" 
-          : "border-border bg-card hover:bg-accent/50",
-        !isClickable && "opacity-50 cursor-not-allowed"
+        "w-full flex items-center gap-4 p-5 rounded-2xl border border-border bg-card transition-all duration-300 text-left group animate-scale-in shadow-lg hover:shadow-xl cursor-pointer"
       )}
     >
-      <div className={cn(
-        "flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center transition-colors",
-        isCompleted 
-          ? "bg-primary text-primary-foreground" 
-          : "bg-primary/10 text-primary group-hover:bg-primary group-hover:text-primary-foreground"
-      )}>
-        {isCompleted ? <Check className="h-5 w-5" /> : icon}
+      <div className="flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center bg-primary/10 text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
+        {icon}
       </div>
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-muted-foreground">Step {step}</span>
-        </div>
-        <p className="font-medium">{label}</p>
+        <span className="text-xs text-muted-foreground font-medium">Step {step}</span>
+        <p className="font-semibold text-lg">{label}</p>
         <p className="text-sm text-muted-foreground">{microText}</p>
       </div>
     </button>
@@ -152,40 +136,17 @@ export function SellerModal({ open, onOpenChange }: SellerModalProps) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md" blur>
-        <DialogHeader>
-          <DialogTitle className="text-xl">Start selling in 4 simple steps</DialogTitle>
-          <DialogDescription>
-            Click each step to continue. It takes less than 5 minutes!
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="space-y-3 py-4">
-          {steps.map((stepData) => (
-            <StepCard
-              key={stepData.step}
-              {...stepData}
-              onClick={() => handleStepClick(stepData.step)}
-              isVisible={stepData.step <= currentStep}
-              isCompleted={completedSteps.includes(stepData.step)}
-              isClickable={stepData.step === currentStep && !completedSteps.includes(stepData.step)}
-            />
-          ))}
-        </div>
-
-        <div className="flex items-center justify-between text-sm text-muted-foreground">
-          <span>Progress: {completedSteps.length}/4 steps</span>
-          <Button 
-            variant="ghost" 
-            size="sm"
-            onClick={() => {
-              onOpenChange(false);
-              navigate('/auth?mode=signup');
-            }}
-          >
-            Skip tutorial
-          </Button>
-        </div>
+      <DialogContent className="sm:max-w-sm p-0 border-0 bg-transparent shadow-none" blur>
+        {steps.map((stepData) => (
+          <StepCard
+            key={stepData.step}
+            {...stepData}
+            onClick={() => handleStepClick(stepData.step)}
+            isVisible={stepData.step === currentStep}
+            isCompleted={false}
+            isClickable={true}
+          />
+        ))}
       </DialogContent>
     </Dialog>
   );
