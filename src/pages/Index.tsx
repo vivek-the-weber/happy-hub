@@ -26,19 +26,19 @@ export default function Index() {
 
       {/* Content - shows after selection */}
       {selectedRole !== null && (
-        <>
+        <div className={selectedRole === 'seller' ? 'flex-1 flex flex-col bg-foreground text-background' : 'flex-1 flex flex-col'}>
           {/* Simple header with brand */}
-          <header className="p-6 border-b">
+          <header className="p-6">
             <h1 className="text-xl font-bold">happy2buy</h1>
           </header>
 
-          <main className="flex-1">
+          <main className="flex-1 flex flex-col">
             {selectedRole === 'customer' && <CustomerView />}
             {selectedRole === 'seller' && <SellerView />}
           </main>
 
-          <Footer />
-        </>
+          <Footer dark={selectedRole === 'seller'} />
+        </div>
       )}
     </div>
   );
