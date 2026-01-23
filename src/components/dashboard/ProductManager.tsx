@@ -350,74 +350,79 @@ export function ProductManager({ store }: ProductManagerProps) {
           </div>
         </div>
       ) : (
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="flex flex-col gap-3">
           {products?.map((product) => {
             const displayImage = getDisplayImage(product);
-            const imageCount = product.image_urls?.length || (product.image_url ? 1 : 0);
             
             return (
               <div 
                 key={product.id} 
-                className={`bg-white/5 border border-white/10 rounded-2xl overflow-hidden ${!product.is_available ? 'opacity-60' : ''}`}
+                className={`bg-white/5 border border-white/10 rounded-2xl p-3 flex items-center gap-4 ${!product.is_available ? 'opacity-60' : ''}`}
               >
-                <div className="h-24 bg-white/5 relative">
+                {/* Product Image */}
+                <div className="w-16 h-16 rounded-xl bg-white/5 overflow-hidden flex-shrink-0">
                   {displayImage ? (
-                    <>
-                      <img
-                        src={displayImage}
-                        alt={product.name}
-                        className="w-full h-full object-cover"
-                      />
-                      {imageCount > 1 && (
-                        <div className="absolute bottom-2 right-2 bg-black/60 text-white text-xs px-2 py-1 rounded-full">
-                          +{imageCount - 1}
-                        </div>
-                      )}
-                    </>
+                    <img
+                      src={displayImage}
+                      alt={product.name}
+                      className="w-full h-full object-cover"
+                    />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center text-background/40 text-sm">
+                    <div className="w-full h-full flex items-center justify-center text-background/40 text-xs">
                       No image
                     </div>
                   )}
                 </div>
-                <div className="p-4">
-                  <h3 className="font-medium text-sm text-background line-clamp-1 mb-1">{product.name}</h3>
-                  <p className="text-lg font-semibold text-primary mb-3">
-                    {formatPrice(product.price, store.country)}
-                  </p>
-                  
-                  <div className="flex items-center justify-between gap-2 mb-3">
-                    <div className="flex items-center gap-2">
-                      <Switch
-                        checked={product.is_available}
-                        onCheckedChange={() => handleToggleAvailability(product)}
-                        className="data-[state=unchecked]:bg-white/20"
-                      />
-                      <span className="text-xs text-background/60">
-                        {product.is_available ? 'Available' : 'Sold out'}
-                      </span>
-                    </div>
-                  </div>
-                  
-                  <div className="flex gap-2">
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      className="flex-1 bg-white/5 border-white/10 text-background hover:bg-white/10 rounded-xl"
-                      onClick={() => openDialog(product)}
+
+                {/* Product Info */}
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-medium text-sm text-background line-clamp-1">{product.name}</h3>
+                  {product.description && (
+                    <p className="text-xs text-background/50 line-clamp-1">{product.description}</p>
+                  )}
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className="text-sm font-semibold text-background">
+                      {formatPrice(product.price, store.country)}
+                    </span>
+                    <span 
+                      className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${
+                        product.is_available 
+                          ? 'bg-primary/20 text-primary' 
+                          : 'bg-destructive/20 text-destructive'
+                      }`}
                     >
-                      <Edit2 className="h-3 w-3 mr-1" />
-                      Edit
-                    </Button>
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      className="bg-white/5 border-white/10 text-background hover:bg-white/10 rounded-xl"
-                      onClick={() => handleDelete(product)}
-                    >
-                      <Trash2 className="h-3 w-3" />
-                    </Button>
+                      {product.is_available ? 'ACTIVE' : 'SOLD OUT'}
+                    </span>
                   </div>
+                </div>
+
+                {/* Actions */}
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <button
+                    onClick={() => openDialog(product)}
+                    className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-background/60 hover:bg-white/10 hover:text-background transition-colors"
+                  >
+                    <Edit2 className="h-4 w-4" />
+                  </button>
+                  <button
+                    onClick={() => handleToggleAvailability(product)}
+                    className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors ${
+                      product.is_available 
+                        ? 'bg-destructive/10 border border-destructive/20 text-destructive hover:bg-destructive/20' 
+                        : 'bg-primary/10 border border-primary/20 text-primary hover:bg-primary/20'
+                    }`}
+                  >
+                    {product.is_available ? (
+                      <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <rect x="6" y="4" width="4" height="16" rx="1" />
+                        <rect x="14" y="4" width="4" height="16" rx="1" />
+                      </svg>
+                    ) : (
+                      <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M8 5v14l11-7z" />
+                      </svg>
+                    )}
+                  </button>
                 </div>
               </div>
             );
