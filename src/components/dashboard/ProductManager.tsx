@@ -322,7 +322,7 @@ export function ProductManager({ store }: ProductManagerProps) {
                   type="button" 
                   variant="outline" 
                   onClick={() => setIsDialogOpen(false)}
-                  className="border-white/10 text-background hover:bg-white/5 rounded-xl"
+                  className="bg-white/5 border-white/10 text-background hover:bg-white/10 rounded-xl"
                 >
                   Cancel
                 </Button>
