@@ -159,7 +159,7 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-surface-inverse text-background">
+    <div className="min-h-screen bg-surface-inverse text-background overflow-x-hidden">
       {/* Header */}
       <header className="sticky top-0 z-50 bg-surface-inverse/95 backdrop-blur border-b border-white/10">
         <div className="container flex items-center justify-between h-14">
@@ -199,36 +199,38 @@ export default function Dashboard() {
       {/* Main Content */}
       <main className="container py-6">
         <Tabs defaultValue="products" className="space-y-6">
-          <TabsList className="bg-white/5 border border-white/10 p-1">
-            <TabsTrigger 
-              value="products" 
-              className="data-[state=active]:bg-white/10 data-[state=active]:text-background text-background/60"
-            >
-              <Package className="h-4 w-4 mr-2" />
-              Products
-            </TabsTrigger>
-            <TabsTrigger 
-              value="orders"
-              className="data-[state=active]:bg-white/10 data-[state=active]:text-background text-background/60"
-            >
-              <ShoppingBag className="h-4 w-4 mr-2" />
-              Orders
-            </TabsTrigger>
-            <TabsTrigger 
-              value="shipping"
-              className="data-[state=active]:bg-white/10 data-[state=active]:text-background text-background/60"
-            >
-              <Truck className="h-4 w-4 mr-2" />
-              Shipping
-            </TabsTrigger>
-            <TabsTrigger 
-              value="settings"
-              className="data-[state=active]:bg-white/10 data-[state=active]:text-background text-background/60"
-            >
-              <Settings className="h-4 w-4 mr-2" />
-              Settings
-            </TabsTrigger>
-          </TabsList>
+          <div className="overflow-x-auto -mx-4 px-4 scrollbar-hide">
+            <TabsList className="bg-white/5 border border-white/10 p-1 w-max">
+              <TabsTrigger 
+                value="products" 
+                className="data-[state=active]:bg-white/10 data-[state=active]:text-background text-background/60"
+              >
+                <Package className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">Products</span>
+              </TabsTrigger>
+              <TabsTrigger 
+                value="orders"
+                className="data-[state=active]:bg-white/10 data-[state=active]:text-background text-background/60"
+              >
+                <ShoppingBag className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">Orders</span>
+              </TabsTrigger>
+              <TabsTrigger 
+                value="shipping"
+                className="data-[state=active]:bg-white/10 data-[state=active]:text-background text-background/60"
+              >
+                <Truck className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">Shipping</span>
+              </TabsTrigger>
+              <TabsTrigger 
+                value="settings"
+                className="data-[state=active]:bg-white/10 data-[state=active]:text-background text-background/60"
+              >
+                <Settings className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">Settings</span>
+              </TabsTrigger>
+            </TabsList>
+          </div>
 
           <TabsContent value="products" className="mt-6">
             <ProductManager store={store} />
