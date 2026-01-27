@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ShoppingBag, Store } from 'lucide-react';
 import { CustomerView } from '@/components/landing/CustomerView';
 import { SellerView } from '@/components/landing/SellerView';
@@ -6,6 +6,10 @@ import { Footer } from '@/components/landing/Footer';
 import { cn } from '@/lib/utils';
 export default function Index() {
   const [selectedRole, setSelectedRole] = useState<'customer' | 'seller' | null>(null);
+
+  useEffect(() => {
+    document.title = selectedRole === 'seller' ? 'Simple store' : 'happy shopin';
+  }, [selectedRole]);
   return <div className="min-h-screen flex flex-col bg-surface-inverse text-background">
       {/* Header */}
       <header className="p-6 text-center">
