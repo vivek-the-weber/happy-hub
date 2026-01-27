@@ -6,7 +6,6 @@ import { Footer } from '@/components/landing/Footer';
 import { cn } from '@/lib/utils';
 export default function Index() {
   const [selectedRole, setSelectedRole] = useState<'customer' | 'seller' | null>(null);
-
   useEffect(() => {
     document.title = selectedRole === 'seller' ? 'Simple store' : 'happy shopin';
   }, [selectedRole]);
@@ -22,7 +21,8 @@ export default function Index() {
         {/* Hero section - always visible when no role selected */}
         {selectedRole === null && <div className="flex-1 flex flex-col items-center justify-center px-6 py-12">
             <div className="text-center space-y-6 max-w-lg w-full">
-              <h2 className="text-5xl md:text-6xl font-bold tracking-tight">happy shopin</h2>
+              <h2 className="text-5xl md:text-6xl font-bold tracking-tight">happy 
+shopin</h2>
               
               <p className="text-background/60 text-lg">Shop from trusted sellers.</p>
 
