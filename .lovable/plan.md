@@ -2,91 +2,57 @@
 
 ## Fix Order Placement RLS Error
 
-### Problem
+### Problem Analysis
 
-When customers place an order, the code uses `.select().single()` after the insert to get the order ID back:
+The error `42501` - "new row violates row-level security policy" is occurring because the RLS policy on the `orders` table has an incorrect policy type.
 
-```typescript
-const { data: order, error: orderError } = await supabase
-  .from('orders')
-  .insert({...})
-  .select()   // <-- Requires SELECT permission
-  .single();
-```
+Currently, the policy **"Anyone can create orders"** is configured as:
+- **Type: RESTRICTIVE** 
+- **Command: INSERT**
+- **WITH CHECK: true**
 
-However, the SELECT policy on the `orders` table only allows **store owners** to view orders. Anonymous customers don't have SELECT permission, so the operation fails with error code `42501` (RLS violation).
+This is the root cause. In PostgreSQL's RLS system:
+
+1. **PERMISSIVE policies** grant access - at least one must pass to allow the operation
+2. **RESTRICTIVE policies** only filter/restrict already-granted access - they cannot grant access on their own
+
+Since the INSERT policy is RESTRICTIVE (not PERMISSIVE), it cannot actually allow anyone to insert. The same issue exists for the `order_items` table.
 
 ---
 
 ### Solution
 
-Modify the insert logic in `Cart.tsx` to:
-1. Insert the order **without** `.select()`
-2. Get the order ID using Postgres `RETURNING` clause by adding `{ returning: 'representation' }` option - but this also requires SELECT
-3. **Better approach**: Use a separate insert query for order_items that doesn't depend on the order ID, OR add an RLS policy allowing the anon role to read orders they just created
+Drop the existing RESTRICTIVE INSERT policies and recreate them as PERMISSIVE policies.
 
-Since orders don't track a `customer_id`, the cleanest solution is to:
-1. Add a temporary workaround by generating the order UUID client-side before insert
-2. Use that UUID for both the order and order_items inserts
+#### Database Migration Required
 
----
+```sql
+-- Drop existing restrictive policies
+DROP POLICY IF EXISTS "Anyone can create orders" ON orders;
+DROP POLICY IF EXISTS "Anyone can create order items" ON order_items;
 
-### Changes Required
+-- Recreate as PERMISSIVE policies (default behavior)
+CREATE POLICY "Anyone can create orders" 
+  ON orders 
+  FOR INSERT 
+  TO anon, authenticated
+  WITH CHECK (true);
 
-#### Update `src/pages/Cart.tsx`
-
-Generate a UUID client-side for each order, then use it in both the order and order_items inserts:
-
-**Current approach (lines 45-58):**
-```typescript
-const { data: order, error: orderError } = await supabase
-  .from('orders')
-  .insert({
-    store_id: storeId,
-    customer_name: customerName,
-    // ...
-  })
-  .select()
-  .single();
-
-if (orderError) throw orderError;
-
-const orderItems = items.map(item => ({
-  order_id: order.id,  // Uses order.id from select
-  // ...
-}));
-```
-
-**New approach:**
-```typescript
-// Generate UUID client-side
-const orderId = crypto.randomUUID();
-
-const { error: orderError } = await supabase
-  .from('orders')
-  .insert({
-    id: orderId,  // Use client-generated UUID
-    store_id: storeId,
-    customer_name: customerName,
-    // ...
-  });
-
-if (orderError) throw orderError;
-
-const orderItems = items.map(item => ({
-  order_id: orderId,  // Use the same UUID
-  // ...
-}));
+CREATE POLICY "Anyone can create order items" 
+  ON order_items 
+  FOR INSERT 
+  TO anon, authenticated
+  WITH CHECK (true);
 ```
 
 ---
 
-### Why This Works
+### Why This Fixes the Issue
 
-- The `orders` table has `id` with a default of `gen_random_uuid()`, but we can override it with our own UUID
-- The INSERT policy `WITH CHECK (true)` allows anyone to insert
-- We no longer need SELECT permission since we're not reading back the inserted row
-- The order_items INSERT also has `WITH CHECK (true)` so it will work
+- `CREATE POLICY` without `AS RESTRICTIVE` creates PERMISSIVE policies by default
+- Explicitly granting to both `anon` and `authenticated` roles ensures all users can place orders
+- The `WITH CHECK (true)` allows any valid row to be inserted
+- No code changes needed in Cart.tsx - the fix is database-side only
 
 ---
 
@@ -94,5 +60,11 @@ const orderItems = items.map(item => ({
 
 | File | Change |
 |------|--------|
-| `src/pages/Cart.tsx` | Generate order UUID client-side, remove `.select().single()` from insert |
+| Database migration | Recreate INSERT policies as PERMISSIVE for both `orders` and `order_items` tables |
+
+---
+
+### Technical Note
+
+The existing code in `Cart.tsx` is correct (generates UUID client-side, no `.select()` call). The only issue is the database policy configuration.
 
