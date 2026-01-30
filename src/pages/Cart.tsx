@@ -42,23 +42,25 @@ export default function Cart() {
       for (const [storeId, { storeName, storeCountry, items }] of Object.entries(itemsByStore)) {
         const storeTotal = items.reduce((sum, item) => sum + item.productPrice * item.quantity, 0);
 
-        const { data: order, error: orderError } = await supabase
+        // Generate UUID client-side to avoid needing SELECT permission
+        const orderId = crypto.randomUUID();
+
+        const { error: orderError } = await supabase
           .from('orders')
           .insert({
+            id: orderId,
             store_id: storeId,
             customer_name: customerName,
             customer_phone: customerPhone,
             customer_address: customerAddress,
             customer_notes: customerNotes || null,
             total_amount: storeTotal,
-          })
-          .select()
-          .single();
+          });
 
         if (orderError) throw orderError;
 
         const orderItems = items.map(item => ({
-          order_id: order.id,
+          order_id: orderId,
           product_id: item.productId,
           product_name: item.productName,
           product_price: item.productPrice,
