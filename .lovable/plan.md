@@ -1,76 +1,81 @@
 
 
-## Redesign Shipping Settings Page
+## Add Site-Wide Passcode Protection
 
-Based on the reference image, the shipping settings page needs a cleaner, more consolidated design with:
-1. A **Shiprocket Automation toggle** at the top as a simple card
-2. A **"MANUAL SHIPPING SETTINGS"** section header with a green indicator dot
-3. Consolidated fields (Estimated Delivery, Shipping Charge, Free Shipping toggle)
-4. A sticky **green "Save Shipping Settings" button** at the bottom
-5. Removal of the "Learn Shipping" videos section for a cleaner look
+### Overview
+
+I'll implement a passcode gate that blocks access to the entire website (both main domain and all subdomains) until a correct passcode is entered. The device will be cached using localStorage so returning visitors won't need to re-enter it.
 
 ---
 
-### Design Changes
+### Passcode
 
-#### 1. New Layout Structure
+Here is your secure passcode (128 characters with mixed case, numbers, and special characters):
 
-| Current | New |
-|---------|-----|
-| Separate "Shipping Settings" card | Unified page with header and sections |
-| Separate "Shiprocket Integration" card with email/password form | Simple toggle at top (opens modal for connection) |
-| "Learn Shipping" videos section | Removed for cleaner design |
-| Save button inside form | Full-width sticky green button at bottom |
+```
+H2b@2026!xK9#mPqR$vLwZ&jNfYc*uEaG%dStXi^WoMbC+hUlJrF=nVkOy_TpIz~QeAs<DgBx>HjKmLoRuPvNwY[ZaEfIc]ChGkDnMsWoJtLpQ
+```
 
-#### 2. Visual Elements
-
-- **Page header**: "Shipping" title with truck icon and options menu
-- **Shiprocket toggle card**: Simple toggle with "Automate shipping with Shiprocket" subtitle
-- **Section divider**: Green dot + "MANUAL SHIPPING SETTINGS" label
-- **Form fields**: Same inputs but without card wrapper
-- **Free Shipping**: Toggle card style (matches reference)
-- **Save button**: Full-width, bright green, sticky at bottom on mobile
+**Important:** Store this passcode securely. Anyone with this passcode can access the site.
 
 ---
 
 ### Implementation Details
 
-**File to modify:** `src/components/dashboard/ShippingSettings.tsx`
+#### 1. Create PasscodeGate Component
 
-1. **Remove** the "Learn Shipping" videos section entirely
-2. **Simplify** Shiprocket integration to a toggle:
-   - When OFF: Show simple toggle card
-   - When turned ON: Open a modal/expandable section for credentials
-   - When connected: Show toggle as ON with connected state
-3. **Add section header**: Green dot + "MANUAL SHIPPING SETTINGS" uppercase label
-4. **Restructure form**: Remove card wrapper, use cleaner spacing
-5. **Move save button**: Full-width, sticky green button at page bottom
-6. **Update button styling**: Use bright green (`bg-green-500`) for primary action
+A new component `src/components/PasscodeGate.tsx` that:
+- Checks localStorage for a valid cached access token
+- If not found, displays a fullscreen dark overlay with:
+  - "happy2buy" branding
+  - A passcode input field (paste-only, hidden characters)
+  - Submit button
+- On correct passcode entry:
+  - Stores a hashed verification token in localStorage
+  - Reveals the app content
+- Styled to match the dark theme used on the landing page
 
----
+#### 2. Wrap App with PasscodeGate
 
-### Component Structure (Simplified)
+Modify `src/App.tsx` to wrap all content with the PasscodeGate component so it applies to:
+- Main domain routes
+- Subdomain store routes
+- All pages universally
 
-```text
-ShippingSettings
-├── Header Row (title + menu icon)
-├── Shiprocket Toggle Card
-│   ├── "Shiprocket Automation" label
-│   ├── "Automate shipping with Shiprocket" subtitle
-│   └── Switch (triggers connection modal when turned on)
-├── Section Header ("• MANUAL SHIPPING SETTINGS")
-├── Manual Settings Form
-│   ├── Estimated Delivery input
-│   ├── Shipping Charge input with currency symbol
-│   └── Free Shipping toggle card
-└── Sticky Save Button (full-width, green)
-```
+#### 3. Security Considerations
+
+- The passcode itself won't be stored in localStorage (only a verification hash)
+- The passcode is validated client-side (sufficient for a staging/preview gate)
+- localStorage persists across browser sessions until cleared
+- Cache key includes a version identifier for easy invalidation later
 
 ---
 
-### Files to Modify
+### Component Design
 
-| File | Changes |
-|------|---------|
-| `src/components/dashboard/ShippingSettings.tsx` | Complete redesign: remove videos section, add Shiprocket toggle, add section header, restructure form, add sticky green save button |
+The passcode screen will feature:
+- Pure black background (`bg-surface-inverse`)
+- Centered content with "happy2buy" logo
+- "Enter access code" label
+- Large text input (password type, rounded, dark theme)
+- "Enter" button (primary green)
+- Error message on incorrect passcode
+
+---
+
+### Files to Create/Modify
+
+| File | Change |
+|------|--------|
+| `src/components/PasscodeGate.tsx` | New component: fullscreen passcode gate with localStorage caching |
+| `src/App.tsx` | Wrap entire app content with PasscodeGate component |
+
+---
+
+### Technical Notes
+
+- **Passcode storage**: The actual passcode will be stored as a constant in the component (client-side validation is acceptable for preview/staging gates)
+- **Cache mechanism**: localStorage key `h2b_access_v1` stores a hash when authenticated
+- **Expiration**: No expiration by default (persists until localStorage is cleared or cache version changes)
+- **Copy-paste design**: The input will work normally but the 128-character length makes manual typing impractical
 
