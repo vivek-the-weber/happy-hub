@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
-import { Truck, Play, Clock } from 'lucide-react';
+import { Truck, Play, Clock, Link2, Unlink, Loader2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { useUpdateStore, Store } from '@/hooks/useStore';
+import { useConnectShiprocket, useDisconnectShiprocket } from '@/hooks/useShiprocket';
 import { toast } from 'sonner';
 import { getCurrencySymbol } from '@/lib/currency';
 
@@ -38,10 +39,16 @@ const shippingVideos = [
 
 export function ShippingSettings({ store }: ShippingSettingsProps) {
   const updateStore = useUpdateStore();
+  const connectShiprocket = useConnectShiprocket();
+  const disconnectShiprocket = useDisconnectShiprocket();
 
   const [estimatedDeliveryTime, setEstimatedDeliveryTime] = useState('');
   const [shippingCharge, setShippingCharge] = useState('0');
   const [freeShipping, setFreeShipping] = useState(false);
+  
+  // Shiprocket state
+  const [shiprocketEmail, setShiprocketEmail] = useState('');
+  const [shiprocketPassword, setShiprocketPassword] = useState('');
 
   useEffect(() => {
     if (store) {
@@ -64,6 +71,37 @@ export function ShippingSettings({ store }: ShippingSettingsProps) {
       toast.success('Shipping settings saved!');
     } catch (error: any) {
       toast.error(error.message || 'Failed to save shipping settings');
+    }
+  };
+
+  const handleConnectShiprocket = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!shiprocketEmail || !shiprocketPassword) {
+      toast.error('Please enter your Shiprocket email and password');
+      return;
+    }
+
+    try {
+      await connectShiprocket.mutateAsync({
+        storeId: store.id,
+        email: shiprocketEmail,
+        password: shiprocketPassword,
+      });
+      toast.success('Connected to Shiprocket successfully!');
+      setShiprocketEmail('');
+      setShiprocketPassword('');
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to connect to Shiprocket');
+    }
+  };
+
+  const handleDisconnectShiprocket = async () => {
+    try {
+      await disconnectShiprocket.mutateAsync({ storeId: store.id });
+      toast.success('Disconnected from Shiprocket');
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to disconnect from Shiprocket');
     }
   };
 
@@ -148,6 +186,114 @@ export function ShippingSettings({ store }: ShippingSettingsProps) {
               {updateStore.isPending ? 'Saving...' : 'Save Shipping Settings'}
             </Button>
           </form>
+        </div>
+      </div>
+
+      {/* Shiprocket Integration Card */}
+      <div className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden">
+        <div className="p-6 border-b border-white/10">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-lg font-semibold text-background flex items-center gap-2">
+                <Link2 className="h-5 w-5" />
+                Shiprocket Integration
+              </h3>
+              <p className="text-sm text-background/60 mt-1">
+                Connect your Shiprocket account to automate shipping
+              </p>
+            </div>
+            {store.shiprocket_connected && (
+              <Badge className="bg-green-500/20 text-green-400 border border-green-500/30">
+                Connected
+              </Badge>
+            )}
+          </div>
+        </div>
+        <div className="p-6">
+          {store.shiprocket_connected ? (
+            <div className="space-y-4 max-w-md">
+              <div className="flex items-center gap-3 p-4 rounded-xl border border-white/10 bg-white/5">
+                <div className="flex-1">
+                  <p className="text-sm text-background/80">Connected as</p>
+                  <p className="font-medium text-background">{store.shiprocket_email}</p>
+                </div>
+              </div>
+              <Button
+                variant="outline"
+                onClick={handleDisconnectShiprocket}
+                disabled={disconnectShiprocket.isPending}
+                className="rounded-xl border-white/10 text-background hover:bg-white/10"
+              >
+                {disconnectShiprocket.isPending ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Disconnecting...
+                  </>
+                ) : (
+                  <>
+                    <Unlink className="h-4 w-4 mr-2" />
+                    Disconnect Shiprocket
+                  </>
+                )}
+              </Button>
+            </div>
+          ) : (
+            <form onSubmit={handleConnectShiprocket} className="space-y-4 max-w-md">
+              <p className="text-sm text-background/60">
+                Shiprocket helps you ship orders across India with multiple courier partners. 
+                Enter your Shiprocket account credentials to connect.
+              </p>
+              
+              <div className="space-y-2">
+                <Label htmlFor="shiprocketEmail" className="text-background/80">
+                  Shiprocket Email
+                </Label>
+                <Input
+                  id="shiprocketEmail"
+                  type="email"
+                  placeholder="your@email.com"
+                  value={shiprocketEmail}
+                  onChange={(e) => setShiprocketEmail(e.target.value)}
+                  className="bg-white/5 border-white/10 text-background placeholder:text-background/40 focus:border-primary h-12 rounded-xl"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="shiprocketPassword" className="text-background/80">
+                  Shiprocket Password
+                </Label>
+                <Input
+                  id="shiprocketPassword"
+                  type="password"
+                  placeholder="••••••••"
+                  value={shiprocketPassword}
+                  onChange={(e) => setShiprocketPassword(e.target.value)}
+                  className="bg-white/5 border-white/10 text-background placeholder:text-background/40 focus:border-primary h-12 rounded-xl"
+                />
+                <p className="text-xs text-background/50">
+                  Your password is never stored. We only save the authentication token.
+                </p>
+              </div>
+
+              <Button
+                type="submit"
+                disabled={connectShiprocket.isPending}
+                className="rounded-xl"
+              >
+                {connectShiprocket.isPending ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Connecting...
+                  </>
+                ) : (
+                  <>
+                    <Link2 className="h-4 w-4 mr-2" />
+                    Connect to Shiprocket
+                  </>
+                )}
+              </Button>
+            </form>
+          )}
         </div>
       </div>
 

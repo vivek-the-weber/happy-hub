@@ -191,6 +191,9 @@ export type Database = {
           owner_id: string
           payment_instructions: string | null
           shipping_charge: number | null
+          shiprocket_connected: boolean | null
+          shiprocket_email: string | null
+          shiprocket_token: string | null
           slug: string
           updated_at: string
           whatsapp_number: string | null
@@ -208,6 +211,9 @@ export type Database = {
           owner_id: string
           payment_instructions?: string | null
           shipping_charge?: number | null
+          shiprocket_connected?: boolean | null
+          shiprocket_email?: string | null
+          shiprocket_token?: string | null
           slug: string
           updated_at?: string
           whatsapp_number?: string | null
@@ -225,6 +231,9 @@ export type Database = {
           owner_id?: string
           payment_instructions?: string | null
           shipping_charge?: number | null
+          shiprocket_connected?: boolean | null
+          shiprocket_email?: string | null
+          shiprocket_token?: string | null
           slug?: string
           updated_at?: string
           whatsapp_number?: string | null
