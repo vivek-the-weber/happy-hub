@@ -1,70 +1,76 @@
 
 
-## Fix Order Placement RLS Error
+## Redesign Shipping Settings Page
 
-### Problem Analysis
-
-The error `42501` - "new row violates row-level security policy" is occurring because the RLS policy on the `orders` table has an incorrect policy type.
-
-Currently, the policy **"Anyone can create orders"** is configured as:
-- **Type: RESTRICTIVE** 
-- **Command: INSERT**
-- **WITH CHECK: true**
-
-This is the root cause. In PostgreSQL's RLS system:
-
-1. **PERMISSIVE policies** grant access - at least one must pass to allow the operation
-2. **RESTRICTIVE policies** only filter/restrict already-granted access - they cannot grant access on their own
-
-Since the INSERT policy is RESTRICTIVE (not PERMISSIVE), it cannot actually allow anyone to insert. The same issue exists for the `order_items` table.
+Based on the reference image, the shipping settings page needs a cleaner, more consolidated design with:
+1. A **Shiprocket Automation toggle** at the top as a simple card
+2. A **"MANUAL SHIPPING SETTINGS"** section header with a green indicator dot
+3. Consolidated fields (Estimated Delivery, Shipping Charge, Free Shipping toggle)
+4. A sticky **green "Save Shipping Settings" button** at the bottom
+5. Removal of the "Learn Shipping" videos section for a cleaner look
 
 ---
 
-### Solution
+### Design Changes
 
-Drop the existing RESTRICTIVE INSERT policies and recreate them as PERMISSIVE policies.
+#### 1. New Layout Structure
 
-#### Database Migration Required
+| Current | New |
+|---------|-----|
+| Separate "Shipping Settings" card | Unified page with header and sections |
+| Separate "Shiprocket Integration" card with email/password form | Simple toggle at top (opens modal for connection) |
+| "Learn Shipping" videos section | Removed for cleaner design |
+| Save button inside form | Full-width sticky green button at bottom |
 
-```sql
--- Drop existing restrictive policies
-DROP POLICY IF EXISTS "Anyone can create orders" ON orders;
-DROP POLICY IF EXISTS "Anyone can create order items" ON order_items;
+#### 2. Visual Elements
 
--- Recreate as PERMISSIVE policies (default behavior)
-CREATE POLICY "Anyone can create orders" 
-  ON orders 
-  FOR INSERT 
-  TO anon, authenticated
-  WITH CHECK (true);
+- **Page header**: "Shipping" title with truck icon and options menu
+- **Shiprocket toggle card**: Simple toggle with "Automate shipping with Shiprocket" subtitle
+- **Section divider**: Green dot + "MANUAL SHIPPING SETTINGS" label
+- **Form fields**: Same inputs but without card wrapper
+- **Free Shipping**: Toggle card style (matches reference)
+- **Save button**: Full-width, bright green, sticky at bottom on mobile
 
-CREATE POLICY "Anyone can create order items" 
-  ON order_items 
-  FOR INSERT 
-  TO anon, authenticated
-  WITH CHECK (true);
+---
+
+### Implementation Details
+
+**File to modify:** `src/components/dashboard/ShippingSettings.tsx`
+
+1. **Remove** the "Learn Shipping" videos section entirely
+2. **Simplify** Shiprocket integration to a toggle:
+   - When OFF: Show simple toggle card
+   - When turned ON: Open a modal/expandable section for credentials
+   - When connected: Show toggle as ON with connected state
+3. **Add section header**: Green dot + "MANUAL SHIPPING SETTINGS" uppercase label
+4. **Restructure form**: Remove card wrapper, use cleaner spacing
+5. **Move save button**: Full-width, sticky green button at page bottom
+6. **Update button styling**: Use bright green (`bg-green-500`) for primary action
+
+---
+
+### Component Structure (Simplified)
+
+```text
+ShippingSettings
+├── Header Row (title + menu icon)
+├── Shiprocket Toggle Card
+│   ├── "Shiprocket Automation" label
+│   ├── "Automate shipping with Shiprocket" subtitle
+│   └── Switch (triggers connection modal when turned on)
+├── Section Header ("• MANUAL SHIPPING SETTINGS")
+├── Manual Settings Form
+│   ├── Estimated Delivery input
+│   ├── Shipping Charge input with currency symbol
+│   └── Free Shipping toggle card
+└── Sticky Save Button (full-width, green)
 ```
-
----
-
-### Why This Fixes the Issue
-
-- `CREATE POLICY` without `AS RESTRICTIVE` creates PERMISSIVE policies by default
-- Explicitly granting to both `anon` and `authenticated` roles ensures all users can place orders
-- The `WITH CHECK (true)` allows any valid row to be inserted
-- No code changes needed in Cart.tsx - the fix is database-side only
 
 ---
 
 ### Files to Modify
 
-| File | Change |
-|------|--------|
-| Database migration | Recreate INSERT policies as PERMISSIVE for both `orders` and `order_items` tables |
-
----
-
-### Technical Note
-
-The existing code in `Cart.tsx` is correct (generates UUID client-side, no `.select()` call). The only issue is the database policy configuration.
+| File | Changes |
+|------|---------|
+| `src/components/dashboard/ShippingSettings.tsx` | Complete redesign: remove videos section, add Shiprocket toggle, add section header, restructure form, add sticky green save button |
 
