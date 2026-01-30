@@ -48,39 +48,51 @@ export function PasscodeGate({ children }: PasscodeGateProps) {
     return <>{children}</>;
   }
 
-  // Not authenticated - show passcode gate
+  // Not authenticated - show coming soon page
   return (
-    <div className="min-h-screen bg-foreground flex flex-col items-center justify-center p-6">
-      <div className="w-full max-w-sm space-y-8">
+    <div className="min-h-screen bg-foreground flex flex-col items-center justify-between p-6 py-16">
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col items-center justify-center text-center space-y-6">
         {/* Logo */}
-        <div className="text-center">
-          <h1 className="text-3xl font-bold text-background">happy2buy</h1>
+        <h1 className="text-3xl font-bold text-background">happy2buy</h1>
+        
+        {/* Coming Soon */}
+        <div className="space-y-4">
+          <h2 className="text-5xl md:text-6xl font-bold text-background">
+            Coming Soon
+          </h2>
+          <p className="text-background/60 text-lg max-w-md">
+            We're building something amazing. Stay tuned!
+          </p>
         </div>
+      </div>
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="space-y-6">
+      {/* Developer Access Section */}
+      <div className="w-full max-w-xs">
+        <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="passcode" className="text-background/70 text-sm">
-              Enter access code
+            <Label htmlFor="passcode" className="text-background/40 text-xs">
+              Enter developer's passcode
             </Label>
             <Input
               id="passcode"
               type="password"
               value={passcode}
               onChange={(e) => setPasscode(e.target.value)}
-              placeholder="Paste access code"
-              className="h-12 bg-background/10 border-background/20 text-background placeholder:text-background/40 rounded-xl focus:border-primary focus:ring-primary"
+              placeholder="Paste developer passcode"
+              className="h-10 bg-background/5 border-background/10 text-background placeholder:text-background/30 rounded-lg text-sm focus:border-primary focus:ring-primary"
               autoComplete="off"
             />
           </div>
 
           {error && (
-            <p className="text-destructive text-sm text-center">{error}</p>
+            <p className="text-destructive text-xs text-center">{error}</p>
           )}
 
           <Button
             type="submit"
-            className="w-full h-12 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-medium"
+            size="sm"
+            className="w-full rounded-lg bg-background/10 hover:bg-background/20 text-background/70 font-medium"
           >
             Enter
           </Button>
