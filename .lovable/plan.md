@@ -1,142 +1,98 @@
 
 
-## Shiprocket Integration Enablement
+## Fix Order Placement RLS Error
 
-### Overview
-Add a Shiprocket integration section in the Shipping Settings tab where sellers can connect their Shiprocket account by entering their API email and password. The credentials will be securely stored in the database and verified via a backend function.
+### Problem
+
+When customers place an order, the code uses `.select().single()` after the insert to get the order ID back:
+
+```typescript
+const { data: order, error: orderError } = await supabase
+  .from('orders')
+  .insert({...})
+  .select()   // <-- Requires SELECT permission
+  .single();
+```
+
+However, the SELECT policy on the `orders` table only allows **store owners** to view orders. Anonymous customers don't have SELECT permission, so the operation fails with error code `42501` (RLS violation).
 
 ---
 
-### Architecture
+### Solution
 
-```text
-┌─────────────────────────────────────────────────────────────────┐
-│                     Seller Dashboard                             │
-│                                                                  │
-│  ┌─────────────────────────────────────────────────────────┐    │
-│  │              Shipping Tab                                │    │
-│  │  ┌─────────────────────────────────────────────────┐    │    │
-│  │  │  Shipping Settings (existing)                   │    │    │
-│  │  └─────────────────────────────────────────────────┘    │    │
-│  │  ┌─────────────────────────────────────────────────┐    │    │
-│  │  │  Shiprocket Integration (NEW)                   │    │    │
-│  │  │  - Email input                                  │    │    │
-│  │  │  - Password input                               │    │    │
-│  │  │  - Connect button                               │    │    │
-│  │  │  - Connection status badge                      │    │    │
-│  │  └─────────────────────────────────────────────────┘    │    │
-│  │  ┌─────────────────────────────────────────────────┐    │    │
-│  │  │  Learn Shipping (existing)                      │    │    │
-│  │  └─────────────────────────────────────────────────┘    │    │
-│  └─────────────────────────────────────────────────────────┘    │
-└─────────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                    Backend Function                              │
-│  shiprocket-auth                                                 │
-│  - Validates email/password with Shiprocket API                 │
-│  - Returns success/failure                                       │
-│  - Token is stored securely in database                         │
-└─────────────────────────────────────────────────────────────────┘
-```
+Modify the insert logic in `Cart.tsx` to:
+1. Insert the order **without** `.select()`
+2. Get the order ID using Postgres `RETURNING` clause by adding `{ returning: 'representation' }` option - but this also requires SELECT
+3. **Better approach**: Use a separate insert query for order_items that doesn't depend on the order ID, OR add an RLS policy allowing the anon role to read orders they just created
+
+Since orders don't track a `customer_id`, the cleanest solution is to:
+1. Add a temporary workaround by generating the order UUID client-side before insert
+2. Use that UUID for both the order and order_items inserts
 
 ---
 
 ### Changes Required
 
-#### 1. Database Migration
-Add Shiprocket credential columns to the `stores` table:
-- `shiprocket_email` (text, nullable) - Seller's Shiprocket account email
-- `shiprocket_token` (text, nullable) - Shiprocket auth token (obtained after login)
-- `shiprocket_connected` (boolean, default false) - Connection status
+#### Update `src/pages/Cart.tsx`
 
-#### 2. Create Backend Function: `shiprocket-auth`
-A new backend function that:
-- Receives email and password from the seller
-- Calls Shiprocket's `/auth/login` API endpoint
-- If successful, returns the token
-- Stores the token in the database for future API calls
-- Never stores the password (only the resulting token)
+Generate a UUID client-side for each order, then use it in both the order and order_items inserts:
 
-#### 3. Update `ShippingSettings.tsx`
-Add a new "Shiprocket Integration" card section with:
-- Email input field
-- Password input field (shown only when not connected)
-- "Connect to Shiprocket" button
-- Connection status indicator (Connected/Not connected)
-- "Disconnect" option when connected
-- Info text explaining what Shiprocket is
+**Current approach (lines 45-58):**
+```typescript
+const { data: order, error: orderError } = await supabase
+  .from('orders')
+  .insert({
+    store_id: storeId,
+    customer_name: customerName,
+    // ...
+  })
+  .select()
+  .single();
 
-#### 4. Update `useStore.tsx`
-Add the new Shiprocket fields to the Store interface:
-- `shiprocket_email: string | null`
-- `shiprocket_token: string | null`
-- `shiprocket_connected: boolean`
+if (orderError) throw orderError;
 
-#### 5. Create New Hook: `useShiprocket.tsx`
-A custom hook to handle:
-- Connecting to Shiprocket (calling the edge function)
-- Disconnecting from Shiprocket
-- Managing loading/error states
-
----
-
-### User Experience Flow
-
-1. Seller navigates to **Dashboard → Shipping tab**
-2. Sees a new "Shiprocket Integration" card below Shipping Settings
-3. Enters their Shiprocket API email and password
-4. Clicks "Connect to Shiprocket"
-5. System validates credentials with Shiprocket API
-6. If successful: Shows "Connected" status with green badge
-7. If failed: Shows error message asking to check credentials
-8. Once connected, seller can disconnect anytime
-
----
-
-### Security Considerations
-
-- Password is **never stored** in the database - only sent to backend function
-- Only the authentication token is stored
-- Backend function handles all Shiprocket API communication
-- RLS policies ensure sellers can only access their own store's data
-- Token can be used for future Shiprocket API calls (creating shipments, tracking, etc.)
-
----
-
-### Technical Details
-
-**Shiprocket API Authentication Endpoint:**
-```text
-POST https://apiv2.shiprocket.in/v1/external/auth/login
-Content-Type: application/json
-
-{
-  "email": "seller@example.com",
-  "password": "their_password"
-}
+const orderItems = items.map(item => ({
+  order_id: order.id,  // Uses order.id from select
+  // ...
+}));
 ```
 
-**Response on success:**
-```json
-{
-  "id": 12345,
-  "token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9...",
-  "first_name": "John",
-  ...
-}
+**New approach:**
+```typescript
+// Generate UUID client-side
+const orderId = crypto.randomUUID();
+
+const { error: orderError } = await supabase
+  .from('orders')
+  .insert({
+    id: orderId,  // Use client-generated UUID
+    store_id: storeId,
+    customer_name: customerName,
+    // ...
+  });
+
+if (orderError) throw orderError;
+
+const orderItems = items.map(item => ({
+  order_id: orderId,  // Use the same UUID
+  // ...
+}));
 ```
 
 ---
 
-### Files to Create/Modify
+### Why This Works
 
-| File | Action |
+- The `orders` table has `id` with a default of `gen_random_uuid()`, but we can override it with our own UUID
+- The INSERT policy `WITH CHECK (true)` allows anyone to insert
+- We no longer need SELECT permission since we're not reading back the inserted row
+- The order_items INSERT also has `WITH CHECK (true)` so it will work
+
+---
+
+### Files to Modify
+
+| File | Change |
 |------|--------|
-| Database migration | CREATE - Add shiprocket columns to stores |
-| `supabase/functions/shiprocket-auth/index.ts` | CREATE - Backend auth function |
-| `src/components/dashboard/ShippingSettings.tsx` | MODIFY - Add Shiprocket card |
-| `src/hooks/useStore.tsx` | MODIFY - Add new fields to Store interface |
-| `src/hooks/useShiprocket.tsx` | CREATE - Shiprocket connection hook |
+| `src/pages/Cart.tsx` | Generate order UUID client-side, remove `.select().single()` from insert |
 
