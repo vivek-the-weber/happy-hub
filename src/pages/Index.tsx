@@ -1,11 +1,26 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { ShoppingBag, Store } from 'lucide-react';
 import { CustomerView } from '@/components/landing/CustomerView';
 import { SellerView } from '@/components/landing/SellerView';
 import { Footer } from '@/components/landing/Footer';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/hooks/useAuth';
+import { useMyStore } from '@/hooks/useStore';
+
 export default function Index() {
   const [selectedRole, setSelectedRole] = useState<'customer' | 'seller' | null>(null);
+  const { user, loading: authLoading } = useAuth();
+  const { data: myStore, isLoading: storeLoading } = useMyStore();
+  const navigate = useNavigate();
+
+  // Redirect logged-in sellers to dashboard
+  useEffect(() => {
+    if (!authLoading && !storeLoading && user && myStore) {
+      navigate('/dashboard', { replace: true });
+    }
+  }, [user, myStore, authLoading, storeLoading, navigate]);
+
   useEffect(() => {
     document.title = selectedRole === 'seller' ? 'Simple store' : 'happy shopin';
   }, [selectedRole]);
