@@ -27,9 +27,11 @@ import { toast } from 'sonner';
 
 interface CollectionManagerProps {
   store: Store;
+  isDialogOpen?: boolean;
+  onDialogOpenChange?: (open: boolean) => void;
 }
 
-export function CollectionManager({ store }: CollectionManagerProps) {
+export function CollectionManager({ store, isDialogOpen: externalDialogOpen, onDialogOpenChange }: CollectionManagerProps) {
   const { data: collections, isLoading } = useCollectionWithProductCount(store.id);
   const { data: products } = useStoreProducts(store.id);
   const createCollection = useCreateCollection();
@@ -37,7 +39,11 @@ export function CollectionManager({ store }: CollectionManagerProps) {
   const deleteCollection = useDeleteCollection();
   const updateCollectionProducts = useUpdateCollectionProducts();
 
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [internalDialogOpen, setInternalDialogOpen] = useState(false);
+  
+  // Use external control if provided, otherwise internal
+  const isDialogOpen = externalDialogOpen ?? internalDialogOpen;
+  const setIsDialogOpen = onDialogOpenChange ?? setInternalDialogOpen;
   const [editingCollection, setEditingCollection] = useState<Collection | null>(null);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -156,18 +162,6 @@ export function CollectionManager({ store }: CollectionManagerProps) {
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <h2 className="text-xl font-semibold text-background">Collections</h2>
-          <p className="text-sm text-background/60">
-            {collections?.length || 0} collection{collections?.length !== 1 ? 's' : ''}
-          </p>
-        </div>
-        <Button onClick={() => openDialog()} className="rounded-xl">
-          <Plus className="h-4 w-4 mr-2" />
-          Add Collection
-        </Button>
-      </div>
 
       {/* Collection Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>

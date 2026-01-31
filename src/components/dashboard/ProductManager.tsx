@@ -43,6 +43,7 @@ export function ProductManager({ store }: ProductManagerProps) {
   const deleteProduct = useDeleteProduct();
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isCollectionDialogOpen, setIsCollectionDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -233,8 +234,20 @@ export function ProductManager({ store }: ProductManagerProps) {
       <div>
         <div className="flex justify-between items-center mb-6">
           <TabSwitcher />
+          <Button 
+            onClick={() => setIsCollectionDialogOpen(true)} 
+            variant="outline"
+            className="rounded-xl border-primary text-primary hover:bg-primary/10"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Add Collection
+          </Button>
         </div>
-        <CollectionManager store={store} />
+        <CollectionManager 
+          store={store} 
+          isDialogOpen={isCollectionDialogOpen}
+          onDialogOpenChange={setIsCollectionDialogOpen}
+        />
       </div>
     );
   }
@@ -257,7 +270,11 @@ export function ProductManager({ store }: ProductManagerProps) {
         <TabSwitcher />
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
-            <Button onClick={() => openDialog()} className="rounded-xl">
+            <Button 
+              onClick={() => openDialog()} 
+              variant="outline"
+              className="rounded-xl border-primary text-primary hover:bg-primary/10"
+            >
               <Plus className="h-4 w-4 mr-2" />
               Add Product
             </Button>
