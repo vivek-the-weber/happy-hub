@@ -24,15 +24,19 @@ import {
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { formatPrice } from '@/lib/currency';
+import { CollectionManager } from './CollectionManager';
 
 const MAX_IMAGES = 5;
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+
+type TabType = 'products' | 'collections';
 
 interface ProductManagerProps {
   store: Store;
 }
 
 export function ProductManager({ store }: ProductManagerProps) {
+  const [activeTab, setActiveTab] = useState<TabType>('products');
   const { data: products, isLoading } = useStoreProducts(store.id);
   const createProduct = useCreateProduct();
   const updateProduct = useUpdateProduct();
@@ -197,19 +201,60 @@ export function ProductManager({ store }: ProductManagerProps) {
     return product.image_urls?.[0] || product.image_url;
   };
 
+  // Tab Switcher Component
+  const TabSwitcher = () => (
+    <div className="inline-flex bg-white/5 rounded-full p-1 border border-white/10">
+      <button 
+        className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
+          activeTab === 'products' 
+            ? 'bg-background text-foreground' 
+            : 'text-background/60 hover:text-background/80'
+        }`}
+        onClick={() => setActiveTab('products')}
+      >
+        Products
+      </button>
+      <button 
+        className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
+          activeTab === 'collections' 
+            ? 'bg-background text-foreground' 
+            : 'text-background/60 hover:text-background/80'
+        }`}
+        onClick={() => setActiveTab('collections')}
+      >
+        Collections
+      </button>
+    </div>
+  );
+
+  // Render Collections tab
+  if (activeTab === 'collections') {
+    return (
+      <div>
+        <div className="flex justify-between items-center mb-6">
+          <TabSwitcher />
+        </div>
+        <CollectionManager store={store} />
+      </div>
+    );
+  }
+
+  // Products tab content
   if (isLoading) {
-    return <div className="text-center py-8 text-background/60">Loading products...</div>;
+    return (
+      <div>
+        <div className="flex justify-between items-center mb-6">
+          <TabSwitcher />
+        </div>
+        <div className="text-center py-8 text-background/60">Loading products...</div>
+      </div>
+    );
   }
 
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
-        <div>
-          <h2 className="text-xl font-semibold text-background">Products</h2>
-          <p className="text-sm text-background/60">
-            {products?.length || 0} product{products?.length !== 1 ? 's' : ''}
-          </p>
-        </div>
+        <TabSwitcher />
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
             <Button onClick={() => openDialog()} className="rounded-xl">
