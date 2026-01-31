@@ -2,6 +2,9 @@ import { useState, useEffect, ReactNode } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { Instagram, Mail, CheckCircle } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/hooks/use-toast";
 
 const ACCESS_KEY = "h2b_access_v1";
 const PASSCODE = "H2b@2026!xK9#mPqR$vLwZ&jNfYc*uEaG%dStXi^WoMbC+hUlJrF=nVkOy_TpIz~QeAs<DgBx>HjKmLoRuPvNwY[ZaEfIc]ChGkDnMsWoJtLpQ";
@@ -15,6 +18,9 @@ export function PasscodeGate({ children }: PasscodeGateProps) {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const [passcode, setPasscode] = useState("");
   const [error, setError] = useState("");
+  const [email, setEmail] = useState("");
+  const [isSubscribing, setIsSubscribing] = useState(false);
+  const [isSubscribed, setIsSubscribed] = useState(false);
 
   useEffect(() => {
     const cached = localStorage.getItem(ACCESS_KEY);
@@ -31,6 +37,45 @@ export function PasscodeGate({ children }: PasscodeGateProps) {
     } else {
       setError("Invalid access code");
       setPasscode("");
+    }
+  };
+
+  const handleSubscribe = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email.trim()) return;
+
+    setIsSubscribing(true);
+    try {
+      const { error: insertError } = await supabase
+        .from('email_subscriptions')
+        .insert({ email: email.trim().toLowerCase() });
+
+      if (insertError) {
+        if (insertError.code === '23505') {
+          toast({
+            title: "Already subscribed!",
+            description: "This email is already on our list.",
+          });
+        } else {
+          throw insertError;
+        }
+      } else {
+        setIsSubscribed(true);
+        setEmail("");
+        toast({
+          title: "You're in!",
+          description: "We'll notify you when we launch.",
+        });
+      }
+    } catch (err) {
+      console.error("Subscription error:", err);
+      toast({
+        title: "Oops!",
+        description: "Something went wrong. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubscribing(false);
     }
   };
 
@@ -52,7 +97,7 @@ export function PasscodeGate({ children }: PasscodeGateProps) {
   return (
     <div className="min-h-screen bg-foreground flex flex-col items-center justify-between p-6 py-16">
       {/* Main Content */}
-      <div className="flex-1 flex flex-col items-center justify-center text-center space-y-6">
+      <div className="flex-1 flex flex-col items-center justify-center text-center space-y-8">
         {/* Logo */}
         <h1 className="text-3xl font-bold text-background">happy2buy</h1>
         
@@ -65,6 +110,48 @@ export function PasscodeGate({ children }: PasscodeGateProps) {
             We're building something amazing. Stay tuned!
           </p>
         </div>
+
+        {/* Email Subscription Form */}
+        <div className="w-full max-w-sm">
+          {isSubscribed ? (
+            <div className="flex items-center justify-center gap-2 text-primary">
+              <CheckCircle className="w-5 h-5" />
+              <span className="text-sm font-medium">You're on the list!</span>
+            </div>
+          ) : (
+            <form onSubmit={handleSubscribe} className="flex gap-2">
+              <div className="relative flex-1">
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-background/40" />
+                <Input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="Enter your email"
+                  className="pl-10 h-11 bg-background/5 border-background/10 text-background placeholder:text-background/40 rounded-lg focus:border-primary focus:ring-primary"
+                  required
+                />
+              </div>
+              <Button
+                type="submit"
+                disabled={isSubscribing}
+                className="h-11 px-6 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground font-medium"
+              >
+                {isSubscribing ? "..." : "Notify me"}
+              </Button>
+            </form>
+          )}
+        </div>
+
+        {/* Instagram Link */}
+        <a
+          href="https://instagram.com/happy2buyy"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-2 text-background/60 hover:text-background transition-colors"
+        >
+          <Instagram className="w-5 h-5" />
+          <span className="text-sm">@happy2buyy</span>
+        </a>
       </div>
 
       {/* Developer Access Section */}
