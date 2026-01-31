@@ -1,117 +1,163 @@
 
 
-## Enhanced Checkout Form with Detailed Address Fields
+## Add Collections Tab to Product Section
 
 ### Overview
 
-Redesign the checkout form to match the reference design with structured address fields and an improved order summary showing product images, variant details, and shipping information.
+Add a "Collections" feature that allows sellers to group products together. The ProductManager component will have an internal tab switcher (Products | Collections) matching the reference design with pill-style buttons.
 
 ---
 
-### Current vs New Form Fields
+### What Are Collections?
 
-| Current Fields | New Fields |
-|----------------|------------|
-| Your name | Full Name |
-| Phone number | Email + Phone (side by side) |
-| Delivery address (textarea) | Address Line 1 |
-| Order notes (optional) | Address Line 2 (optional) |
-| - | City + State (side by side) |
-| - | Postal Code + Country (side by side) |
-| - | Order notes (optional) - keep this |
+Collections are groups of products (like "Summer Sale", "Best Sellers", "New Arrivals"). Each collection:
+- Has a name and optional description
+- Can contain multiple products
+- Can display on the storefront to help customers browse
 
 ---
 
 ### Database Changes Required
 
-The `orders` table needs new columns to store structured address data:
-
+**1. Collections Table**
 ```sql
-ALTER TABLE public.orders
-ADD COLUMN customer_email TEXT,
-ADD COLUMN customer_address_line1 TEXT,
-ADD COLUMN customer_address_line2 TEXT,
-ADD COLUMN customer_city TEXT,
-ADD COLUMN customer_state TEXT,
-ADD COLUMN customer_postal_code TEXT,
-ADD COLUMN customer_country TEXT;
+CREATE TABLE public.collections (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  store_id UUID NOT NULL REFERENCES public.stores(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  description TEXT,
+  image_url TEXT,
+  is_visible BOOLEAN DEFAULT true,
+  sort_order INTEGER DEFAULT 0,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
 ```
 
-Note: Keep existing `customer_address` column for backward compatibility and as a formatted summary.
+**2. Product-Collection Junction Table**
+```sql
+CREATE TABLE public.product_collections (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  product_id UUID NOT NULL REFERENCES public.products(id) ON DELETE CASCADE,
+  collection_id UUID NOT NULL REFERENCES public.collections(id) ON DELETE CASCADE,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  UNIQUE(product_id, collection_id)
+);
+```
+
+**3. RLS Policies**
+- Collections: Store owners can CRUD, public can read visible ones
+- Product-Collections: Store owners can manage through their collections
 
 ---
 
-### Enhanced Order Summary Design
+### UI Changes
 
-Based on the reference screenshots, the order summary will show:
+**ProductManager Component Redesign**
 
-1. **Product rows with images** - Small thumbnail, product name (truncated), variant (if any), quantity badge, and price
-2. **Subtotal line**
-3. **Shipping line** - Shows "Calculating..." initially, then updates with cost and delivery method
-4. **Total line** - Subtotal + Shipping
-
----
-
-### Layout Structure
+The component will include an internal tab switcher at the top:
 
 ```text
-Checkout Form (Two-Column Layout on Desktop)
-├── Left Column: Customer Details
-│   ├── Full Name * (full width)
-│   ├── Row: [Email *] [Phone *]
-│   ├── Address Line 1 * (full width)
-│   ├── Address Line 2 (optional, full width)
-│   ├── Row: [City *] [State *]
-│   └── Row: [Postal Code *] [Country (read-only)]
-│
-└── Right Column: Order Summary
-    ├── Product list with images
-    │   ├── [Image] Name (truncated) | Qty: X | Price
-    │   └── Variant info below name
-    ├── Subtotal
-    ├── Shipping (with delivery method when available)
-    └── Total
++--------------------------------------------------+
+|  [Products]  Collections     [+ Add Product]     |
++--------------------------------------------------+
+|                                                  |
+|  Product list (existing UI)...                   |
+|                                                  |
++--------------------------------------------------+
 ```
 
+When "Collections" is active:
+
+```text
++--------------------------------------------------+
+|  Products  [Collections]     [+ Add Collection]  |
++--------------------------------------------------+
+|                                                  |
+|  Collection cards (name, product count, toggle)  |
+|                                                  |
++--------------------------------------------------+
+```
+
+**Tab Styling (matching reference image)**
+- Dark pill-style buttons with rounded corners
+- Active state: solid dark background with white text
+- Inactive state: transparent with muted text
+
 ---
 
-### Shipping Calculation Logic
-
-The shipping cost can come from:
-1. **Store's fixed shipping charge** - If set by seller
-2. **Free shipping** - If enabled by seller
-3. **Shiprocket API** (future) - Calculate based on postal code and weight
-
-For now, implement using the store's configured `shipping_charge` and `free_shipping` settings.
-
----
-
-### Files to Modify
+### Files to Create/Modify
 
 | File | Changes |
 |------|---------|
-| Database migration | Add structured address columns to `orders` table |
-| `src/pages/Cart.tsx` | Redesign checkout form with new fields, enhanced order summary with images, two-column layout on desktop |
-| `src/lib/cart.ts` | No changes needed |
+| Database migration | Create `collections` and `product_collections` tables with RLS |
+| `src/hooks/useStore.tsx` | Add Collection interface and CRUD hooks |
+| `src/components/dashboard/ProductManager.tsx` | Add internal Products/Collections tab switcher |
+| `src/components/dashboard/CollectionManager.tsx` | New component for collection CRUD with product assignment |
 
 ---
 
-### Technical Implementation Details
+### Technical Details
 
-1. **Form State**: Add new state variables for email, address line 1, address line 2, city, state, postal code
-2. **Country Field**: Auto-populated from the store's country (read-only display)
-3. **Validation**: Require full name, email, phone, address line 1, city, state, postal code
-4. **Order Summary**:
-   - Display product thumbnails (48x48px)
-   - Truncate long product names with ellipsis
-   - Show quantity as "Qty: X"
-   - Calculate and display shipping from store settings
-5. **Database Insert**: Format `customer_address` as a combined string for backward compatibility while also saving individual fields
+**Collection Interface**
+```typescript
+interface Collection {
+  id: string;
+  store_id: string;
+  name: string;
+  description: string | null;
+  image_url: string | null;
+  is_visible: boolean;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+}
+```
+
+**New Hooks**
+- `useStoreCollections(storeId)` - Fetch collections for a store
+- `useCreateCollection()` - Create new collection
+- `useUpdateCollection()` - Update collection
+- `useDeleteCollection()` - Delete collection
+- `useCollectionProducts(collectionId)` - Get products in a collection
+- `useUpdateCollectionProducts()` - Add/remove products from collection
+
+**Internal Tab Switcher Design**
+```tsx
+<div className="inline-flex bg-white/5 rounded-full p-1 border border-white/10">
+  <button 
+    className={activeTab === 'products' 
+      ? 'px-4 py-1.5 rounded-full bg-foreground text-background text-sm font-medium' 
+      : 'px-4 py-1.5 rounded-full text-background/60 text-sm font-medium'
+    }
+    onClick={() => setActiveTab('products')}
+  >
+    Products
+  </button>
+  <button 
+    className={activeTab === 'collections' 
+      ? 'px-4 py-1.5 rounded-full bg-foreground text-background text-sm font-medium' 
+      : 'px-4 py-1.5 rounded-full text-background/60 text-sm font-medium'
+    }
+    onClick={() => setActiveTab('collections')}
+  >
+    Collections
+  </button>
+</div>
+```
+
+**Collection Card Layout**
+- Similar to product cards: horizontal layout with image, name, product count, visibility toggle
+- Edit and delete buttons
+- Click to open collection editor modal with product assignment
 
 ---
 
-### Responsive Behavior
+### Implementation Steps
 
-- **Mobile**: Single column, order summary above customer details form
-- **Desktop**: Two columns side-by-side, customer details on left, order summary on right
+1. Run database migration to create tables and RLS policies
+2. Add Collection types and hooks to `useStore.tsx`
+3. Create `CollectionManager.tsx` component
+4. Update `ProductManager.tsx` to include internal tab switcher
+5. Conditionally render Products list or Collections list based on active tab
 
