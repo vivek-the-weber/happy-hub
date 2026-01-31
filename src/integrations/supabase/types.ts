@@ -81,9 +81,16 @@ export type Database = {
         Row: {
           created_at: string
           customer_address: string
+          customer_address_line1: string | null
+          customer_address_line2: string | null
+          customer_city: string | null
+          customer_country: string | null
+          customer_email: string | null
           customer_name: string
           customer_notes: string | null
           customer_phone: string
+          customer_postal_code: string | null
+          customer_state: string | null
           id: string
           status: string
           store_id: string
@@ -93,9 +100,16 @@ export type Database = {
         Insert: {
           created_at?: string
           customer_address: string
+          customer_address_line1?: string | null
+          customer_address_line2?: string | null
+          customer_city?: string | null
+          customer_country?: string | null
+          customer_email?: string | null
           customer_name: string
           customer_notes?: string | null
           customer_phone: string
+          customer_postal_code?: string | null
+          customer_state?: string | null
           id?: string
           status?: string
           store_id: string
@@ -105,9 +119,16 @@ export type Database = {
         Update: {
           created_at?: string
           customer_address?: string
+          customer_address_line1?: string | null
+          customer_address_line2?: string | null
+          customer_city?: string | null
+          customer_country?: string | null
+          customer_email?: string | null
           customer_name?: string
           customer_notes?: string | null
           customer_phone?: string
+          customer_postal_code?: string | null
+          customer_state?: string | null
           id?: string
           status?: string
           store_id?: string

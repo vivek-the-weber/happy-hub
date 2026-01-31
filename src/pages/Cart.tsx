@@ -1,14 +1,19 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Trash2, Minus, Plus, ShoppingBag, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { useCart } from '@/hooks/useCart';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { formatPrice } from '@/lib/currency';
+import { CheckoutForm, CheckoutFormData } from '@/components/checkout/CheckoutForm';
+import { CheckoutOrderSummary } from '@/components/checkout/CheckoutOrderSummary';
+
+interface StoreShippingInfo {
+  freeShipping: boolean;
+  shippingCharge: number;
+  estimatedDelivery: string | null;
+}
 
 export default function Cart() {
   const navigate = useNavigate();
@@ -16,11 +21,7 @@ export default function Cart() {
   const [isCheckout, setIsCheckout] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [orderPlaced, setOrderPlaced] = useState<{ storeName: string; paymentInstructions: string | null } | null>(null);
-  
-  const [customerName, setCustomerName] = useState('');
-  const [customerPhone, setCustomerPhone] = useState('');
-  const [customerAddress, setCustomerAddress] = useState('');
-  const [customerNotes, setCustomerNotes] = useState('');
+  const [storeShippingInfo, setStoreShippingInfo] = useState<StoreShippingInfo | null>(null);
 
   const itemsByStore = cart.reduce((acc, item) => {
     if (!acc[item.storeId]) {
@@ -30,8 +31,35 @@ export default function Cart() {
     return acc;
   }, {} as Record<string, { storeName: string; storeCountry: string; items: typeof cart }>);
 
-  const handlePlaceOrder = async () => {
-    if (!customerName.trim() || !customerPhone.trim() || !customerAddress.trim()) {
+  const firstStoreId = Object.keys(itemsByStore)[0];
+  const firstStoreCountry = Object.values(itemsByStore)[0]?.storeCountry || 'IN';
+
+  // Fetch store shipping info when entering checkout
+  useEffect(() => {
+    if (isCheckout && firstStoreId) {
+      const fetchShippingInfo = async () => {
+        const { data: store } = await supabase
+          .from('stores')
+          .select('free_shipping, shipping_charge, estimated_delivery_time')
+          .eq('id', firstStoreId)
+          .maybeSingle();
+        
+        if (store) {
+          setStoreShippingInfo({
+            freeShipping: store.free_shipping || false,
+            shippingCharge: store.shipping_charge || 0,
+            estimatedDelivery: store.estimated_delivery_time || null,
+          });
+        }
+      };
+      fetchShippingInfo();
+    }
+  }, [isCheckout, firstStoreId]);
+
+  const handlePlaceOrder = async (formData: CheckoutFormData) => {
+    if (!formData.fullName.trim() || !formData.email.trim() || !formData.phone.trim() || 
+        !formData.addressLine1.trim() || !formData.city.trim() || !formData.state.trim() || 
+        !formData.postalCode.trim()) {
       toast.error('Please fill in all required fields');
       return;
     }
@@ -39,10 +67,19 @@ export default function Cart() {
     setIsSubmitting(true);
 
     try {
-      for (const [storeId, { storeName, storeCountry, items }] of Object.entries(itemsByStore)) {
+      for (const [storeId, { storeName, items }] of Object.entries(itemsByStore)) {
         const storeTotal = items.reduce((sum, item) => sum + item.productPrice * item.quantity, 0);
 
-        // Generate UUID client-side to avoid needing SELECT permission
+        // Format combined address for backward compatibility
+        const combinedAddress = [
+          formData.addressLine1,
+          formData.addressLine2,
+          formData.city,
+          formData.state,
+          formData.postalCode,
+          formData.country
+        ].filter(Boolean).join(', ');
+
         const orderId = crypto.randomUUID();
 
         const { error: orderError } = await supabase
@@ -50,11 +87,18 @@ export default function Cart() {
           .insert({
             id: orderId,
             store_id: storeId,
-            customer_name: customerName,
-            customer_phone: customerPhone,
-            customer_address: customerAddress,
-            customer_notes: customerNotes || null,
+            customer_name: formData.fullName,
+            customer_phone: formData.phone,
+            customer_address: combinedAddress,
+            customer_notes: formData.notes || null,
             total_amount: storeTotal,
+            customer_email: formData.email,
+            customer_address_line1: formData.addressLine1,
+            customer_address_line2: formData.addressLine2 || null,
+            customer_city: formData.city,
+            customer_state: formData.state,
+            customer_postal_code: formData.postalCode,
+            customer_country: formData.country,
           });
 
         if (orderError) throw orderError;
@@ -155,9 +199,7 @@ export default function Cart() {
     );
   }
 
-  const firstStoreCountry = Object.values(itemsByStore)[0]?.storeCountry || 'IN';
-
-  // Checkout form
+  // Checkout form - two column layout
   if (isCheckout) {
     return (
       <div className="min-h-screen bg-surface-inverse text-background flex flex-col">
@@ -171,93 +213,33 @@ export default function Cart() {
         </header>
 
         <main className="flex-1 container py-6">
-          <div className="max-w-md mx-auto space-y-6">
-            <div>
+          <div className="max-w-4xl mx-auto">
+            <div className="mb-6">
               <h1 className="text-2xl font-bold mb-1">Checkout</h1>
               <p className="text-background/60">Complete your order</p>
             </div>
 
-            {/* Order Summary */}
-            <div className="bg-white/5 border border-white/10 rounded-2xl p-5">
-              <h3 className="font-medium mb-3">Order Summary</h3>
-              {cart.map((item) => (
-                <div key={item.productId} className="flex justify-between text-sm py-1">
-                  <span className="text-background/80">{item.productName} × {item.quantity}</span>
-                  <span>{formatPrice(item.productPrice * item.quantity, item.storeCountry)}</span>
-                </div>
-              ))}
-              <div className="border-t border-white/10 mt-3 pt-3 flex justify-between font-semibold">
-                <span>Total</span>
-                <span>{formatPrice(total, firstStoreCountry)}</span>
+            {/* Two column layout: Order summary first on mobile, side-by-side on desktop */}
+            <div className="flex flex-col-reverse lg:flex-row lg:gap-8">
+              {/* Left: Customer Details Form */}
+              <div className="flex-1 lg:max-w-md">
+                <CheckoutForm 
+                  initialCountry={firstStoreCountry}
+                  isSubmitting={isSubmitting}
+                  onSubmit={handlePlaceOrder}
+                />
+              </div>
+
+              {/* Right: Order Summary */}
+              <div className="w-full lg:w-80 mb-6 lg:mb-0">
+                <CheckoutOrderSummary 
+                  cart={cart}
+                  subtotal={total}
+                  storeCountry={firstStoreCountry}
+                  shippingInfo={storeShippingInfo}
+                />
               </div>
             </div>
-
-            {/* Customer Details */}
-            <form onSubmit={(e) => { e.preventDefault(); handlePlaceOrder(); }} className="space-y-5">
-              <div className="space-y-2">
-                <Label htmlFor="name" className="text-background/80">Your name *</Label>
-                <Input
-                  id="name"
-                  placeholder="Enter your name"
-                  value={customerName}
-                  onChange={(e) => setCustomerName(e.target.value)}
-                  required
-                  className="bg-white/5 border-white/10 text-background placeholder:text-background/40 focus:border-primary h-12 rounded-xl"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="phone" className="text-background/80">Phone number *</Label>
-                <Input
-                  id="phone"
-                  type="tel"
-                  placeholder="+91 98765 43210"
-                  value={customerPhone}
-                  onChange={(e) => setCustomerPhone(e.target.value)}
-                  required
-                  className="bg-white/5 border-white/10 text-background placeholder:text-background/40 focus:border-primary h-12 rounded-xl"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="address" className="text-background/80">Delivery address *</Label>
-                <Textarea
-                  id="address"
-                  placeholder="Enter your full address"
-                  value={customerAddress}
-                  onChange={(e) => setCustomerAddress(e.target.value)}
-                  required
-                  className="bg-white/5 border-white/10 text-background placeholder:text-background/40 focus:border-primary rounded-xl min-h-[100px]"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="notes" className="text-background/80">Order notes (optional)</Label>
-                <Textarea
-                  id="notes"
-                  placeholder="Any special instructions..."
-                  value={customerNotes}
-                  onChange={(e) => setCustomerNotes(e.target.value)}
-                  className="bg-white/5 border-white/10 text-background placeholder:text-background/40 focus:border-primary rounded-xl"
-                />
-              </div>
-
-              <Button
-                type="submit"
-                disabled={isSubmitting}
-                className="w-full h-12 rounded-xl text-base font-medium"
-              >
-                {isSubmitting ? (
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                ) : (
-                  'Place Order'
-                )}
-              </Button>
-
-              <p className="text-xs text-background/40 text-center">
-                Payment instructions will be shown after you place your order.
-              </p>
-            </form>
           </div>
         </main>
       </div>
@@ -325,7 +307,7 @@ export default function Cart() {
                           </button>
                           <button
                             onClick={() => removeFromCart(item.productId)}
-                            className="ml-auto w-8 h-8 rounded-lg bg-red-500/20 text-red-400 flex items-center justify-center hover:bg-red-500/30 transition-colors"
+                            className="ml-auto w-8 h-8 rounded-lg bg-destructive/20 text-destructive flex items-center justify-center hover:bg-destructive/30 transition-colors"
                           >
                             <Trash2 className="h-4 w-4" />
                           </button>
