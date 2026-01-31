@@ -237,7 +237,7 @@ export function ProductManager({ store }: ProductManagerProps) {
           <Button 
             onClick={() => setIsCollectionDialogOpen(true)} 
             variant="outline"
-            className="rounded-xl border-primary text-primary hover:bg-primary/10"
+            className="rounded-full border-primary text-primary bg-transparent hover:bg-primary/10"
           >
             <Plus className="h-4 w-4 mr-2" />
             Add Collection
@@ -273,7 +273,7 @@ export function ProductManager({ store }: ProductManagerProps) {
             <Button 
               onClick={() => openDialog()} 
               variant="outline"
-              className="rounded-xl border-primary text-primary hover:bg-primary/10"
+              className="rounded-full border-primary text-primary bg-transparent hover:bg-primary/10"
             >
               <Plus className="h-4 w-4 mr-2" />
               Add Product
