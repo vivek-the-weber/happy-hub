@@ -37,7 +37,7 @@ export default function Cart() {
   const firstStoreCountry = Object.values(itemsByStore)[0]?.storeCountry || 'IN';
 
   // Check if store has Shiprocket connected
-  const { data: shiprocketStatus } = useStoreShiprocketStatus(firstStoreId, isCheckout);
+  const { data: shiprocketStatus, isLoading: isLoadingShiprocketStatus } = useStoreShiprocketStatus(firstStoreId, isCheckout);
 
   // Fetch live shipping rates when postal code is entered
   const { 
@@ -296,6 +296,7 @@ export default function Cart() {
                   shiprocketEnabled={shiprocketEnabled}
                   hasEnteredPostcode={hasEnteredPostcode}
                   shippingError={shippingError}
+                  isLoadingShiprocketStatus={isLoadingShiprocketStatus}
                 />
               </div>
             </div>
