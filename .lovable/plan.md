@@ -1,124 +1,119 @@
 
+## Fix: Shipping Rates Query Not Triggering After Postal Code Entry
 
-## Fix: Shipping Rates Not Fetching After Postal Code Entry
+### Problem Analysis
 
-### Problem Summary
+From your screenshot, I can see:
+1. The `handlePostalCodeChange` callback IS firing correctly for each keystroke (4, 41, 411, 4110, 41106, 411061)
+2. The Shiprocket connection query runs and returns valid data (pickup_postcode: 411061)
+3. BUT the `shiprocket-rates` edge function is **NEVER CALLED** (no network request)
 
-The checkout is showing manual shipping settings (₹50.00, 5-7 days) instead of live Shiprocket rates (₹35.4 via India Post) even though:
-
-1. Shiprocket IS configured for the store (confirmed in database)
-2. The edge function IS working (confirmed via direct API test)
-3. The postal code `411061` IS valid and returns live rates
+This means the `useShippingRates` React Query hook is not triggering despite having valid inputs.
 
 ### Root Cause
 
-The debounced postal code callback in `CheckoutForm` isn't reliably updating the parent's state. When React Query checks the `enabled` condition, `customerPostalCode` is still empty or stale.
+The issue is a **stale closure problem**. The `useShippingRates` hook is called at the top of the component, but the `customerPostalCode` state is only being logged inside the callback. The state update isn't causing the component to re-render with the new postal code value being passed to the hook.
+
+Looking at the component structure:
 
 ```text
-User types postal code in form
-          |
-          v
-CheckoutForm: updateField('postalCode', '411061')
-          |
-          v (500ms debounce)
-CheckoutForm: onPostalCodeChange('411061')  <-- May not fire reliably
-          |
-          v
-Cart.tsx: setCustomerPostalCode('411061')   <-- State not updating
-          |
-          v
-useShippingRates: enabled = false (postalCode still empty)
-          |
-          v
-Falls back to manual shipping (₹50.00)
+Cart Component renders
+         |
+         v
+useShippingRates(firstStoreId, customerPostalCode, weight)
+         |
+         v
+customerPostalCode = '' (initial state)
+         |
+         v
+enabled: '' === '' && ''.length >= 6  →  FALSE (query doesn't run)
+         |
+         v
+User types postal code → handlePostalCodeChange called
+         |
+         v
+setCustomerPostalCode('411061') → triggers re-render
+         |
+         v
+NEW RENDER: useShippingRates should see '411061'
+         |
+         v
+enabled: !!storeId && '411061'.length >= 6 → TRUE
+         |
+         v
+Query SHOULD run... but doesn't?
 ```
 
-### Solution
+The only explanation is that **React is not re-rendering the checkout section** when `customerPostalCode` changes, OR the query key isn't updating properly.
 
-Add console debugging first to identify where the flow breaks, then implement a more reliable state synchronization pattern.
+### Solution: Add Debug Logging and Fix the Query Trigger
 
----
+#### Step 1: Add Comprehensive Debug Logging in Cart.tsx
 
-### Implementation Plan
+Add logging to trace the exact flow of data:
 
-#### Step 1: Add Debug Logging
-
-Add console logs to trace the postal code flow:
-
-**CheckoutForm.tsx:**
 ```typescript
-// In updateField function
-if (field === 'postalCode' && onPostalCodeChange) {
-  console.log('[CheckoutForm] Setting debounce timer for postal code:', value);
-  if (debounceRef.current) {
-    clearTimeout(debounceRef.current);
-  }
-  debounceRef.current = setTimeout(() => {
-    console.log('[CheckoutForm] Debounce fired, calling onPostalCodeChange:', value);
-    onPostalCodeChange(value);
-  }, 500);
-}
-```
-
-**Cart.tsx:**
-```typescript
-const handlePostalCodeChange = (postalCode: string) => {
-  console.log('[Cart] handlePostalCodeChange called with:', postalCode);
-  setCustomerPostalCode(postalCode);
-};
-
-// Add logging for query state
-console.log('[Cart] Shipping state:', {
+// At the top of the checkout render section
+console.log('[Cart] Render with:', {
   customerPostalCode,
-  hasEnteredPostcode,
-  shiprocketEnabled,
-  isLoadingRates,
+  firstStoreId,
+  shiprocketStatus,
+  isLoadingShiprocketStatus,
+});
+
+// Log the query state
+console.log('[Cart] useShippingRates state:', {
   liveRates,
+  isLoadingRates,
+  ratesError,
+  enabled: !!firstStoreId && !!customerPostalCode && customerPostalCode.length >= 6,
 });
 ```
 
-#### Step 2: Add useEffect Debug
+#### Step 2: Fix Potential Query Key Issue
 
-Track state changes in Cart.tsx:
-
+The `useShippingRates` hook uses this query key:
 ```typescript
-useEffect(() => {
-  console.log('[Cart] customerPostalCode changed to:', customerPostalCode);
-}, [customerPostalCode]);
+queryKey: ['shipping-rates', storeId, deliveryPostcode, weight],
 ```
 
-#### Step 3: Fix Potential Issues
+But `weight` depends on `shiprocketStatus?.defaultWeight`, which might be undefined during initial renders, causing the query key to change unexpectedly.
 
-Based on debugging, the likely fixes are:
+**Fix:** Stabilize the weight value:
 
-**Option A: Ensure callback identity is stable**
 ```typescript
-// In Cart.tsx - use useCallback
-const handlePostalCodeChange = useCallback((postalCode: string) => {
-  console.log('[Cart] handlePostalCodeChange:', postalCode);
-  setCustomerPostalCode(postalCode);
-}, []);
+// In Cart.tsx
+const defaultWeight = shiprocketStatus?.defaultWeight ?? 0.5;
+
+const { 
+  data: liveRates, 
+  isLoading: isLoadingRates,
+  error: ratesError,
+} = useShippingRates(
+  firstStoreId,
+  customerPostalCode,
+  defaultWeight
+);
 ```
 
-**Option B: Remove debounce from form, rely on React Query's staleTime**
+#### Step 3: Add Explicit State Logging in Hook
 
-The 500ms debounce combined with React Query's caching might cause issues. A simpler approach:
+Add logging inside `useShippingRates` to see exactly what it receives:
 
 ```typescript
-// CheckoutForm.tsx - call immediately, let React Query handle caching
-if (field === 'postalCode' && onPostalCodeChange) {
-  onPostalCodeChange(value);
+export function useShippingRates(
+  storeId: string | undefined,
+  deliveryPostcode: string | undefined,
+  weight: number = 0.5
+) {
+  console.log('[useShippingRates] Called with:', { storeId, deliveryPostcode, weight });
+  console.log('[useShippingRates] Enabled:', !!storeId && !!deliveryPostcode && deliveryPostcode.length >= 6);
+  
+  return useQuery({
+    // ... rest of query
+  });
 }
 ```
-
-React Query already has:
-- `staleTime: 5 * 60 * 1000` (5 minutes cache)
-- `enabled: deliveryPostcode.length >= 6` (only fetches for valid postcodes)
-
-This is safe because:
-1. React Query won't re-fetch if data is fresh
-2. The query only runs when postcode >= 6 characters
-3. Rate limiting protects against abuse
 
 ---
 
@@ -126,47 +121,47 @@ This is safe because:
 
 | File | Changes |
 |------|---------|
-| `src/pages/Cart.tsx` | Add `useCallback` for handler, add debug logging |
-| `src/components/checkout/CheckoutForm.tsx` | Simplify postal code callback (remove debounce) |
+| `src/pages/Cart.tsx` | Add debug logging, stabilize weight value |
+| `src/hooks/useShippingRates.tsx` | Add debug logging to trace query triggering |
 
 ---
 
-### Alternative: Keep Debounce But Use Stable Reference
+### Expected Outcome
 
-If debouncing is preferred for UX reasons (prevents flicker):
+After these changes:
+1. Console will show exactly what values are being passed to the query
+2. We can identify if the query is being enabled but not firing, or if it's disabled
+3. Once the root cause is confirmed, we can apply the specific fix
+
+---
+
+### Most Likely Fix (Based on Pattern Analysis)
+
+The most probable cause is that the component isn't re-rendering the checkout UI when `customerPostalCode` changes because the derived values are computed inside the `if (isCheckout)` block.
+
+**Alternative Fix:** Move the derived state calculations outside the conditional rendering:
 
 ```typescript
-// CheckoutForm.tsx
-const latestOnPostalCodeChange = useRef(onPostalCodeChange);
-useEffect(() => {
-  latestOnPostalCodeChange.current = onPostalCodeChange;
-}, [onPostalCodeChange]);
+// Move OUTSIDE the if (isCheckout) block
+const shiprocketEnabled = shiprocketStatus?.hasShiprocket && !!shiprocketStatus?.pickupPostcode;
+const hasEnteredPostcode = customerPostalCode.length >= 6;
+const shippingError = getShippingError();
+const liveShippingRate = getLiveShippingRate();
 
-// Use the ref in the debounce
-debounceRef.current = setTimeout(() => {
-  latestOnPostalCodeChange.current?.(value);
-}, 500);
+if (isCheckout) {
+  // Use the already-computed values
+  return ( ... );
+}
 ```
 
----
-
-### Verification
-
-After implementing:
-
-1. Open checkout with items from store `73894fd7-42dd-4bc2-bc37-cd77b324f867`
-2. Enter postal code `411061`
-3. Verify console logs show the flow working
-4. Confirm shipping updates to "₹35.4 via India Post-Speed Post Air Prepaid"
-5. Confirm estimated delivery shows "5 days" instead of "5-7 days"
+This ensures these values are recomputed on every render, not just inside the checkout branch.
 
 ---
 
-### Technical Summary
+### Summary
 
-1. **Root cause**: Debounced callback not reliably triggering parent state update
-2. **Debug first**: Add logging to pinpoint exact failure point
-3. **Simplify**: Remove form-level debounce, rely on React Query caching
-4. **Stable references**: Use `useCallback` for handler in parent
-5. **Fallback works**: Manual settings display correctly when Shiprocket unavailable
-
+1. **Root cause**: State update in `customerPostalCode` may not be causing proper re-render propagation to the query hook
+2. **Debug first**: Add comprehensive logging to trace data flow
+3. **Primary fix**: Move derived state calculations outside conditional blocks
+4. **Secondary fix**: Stabilize the weight value to prevent query key instability
+5. **Verification**: Console logs will show if query is enabled and when it fires
