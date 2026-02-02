@@ -302,14 +302,14 @@ export default function Cart() {
 
               {/* Right: Order Summary */}
               <div className="w-full lg:w-80 mb-6 lg:mb-0">
-                <CheckoutOrderSummary 
+              <CheckoutOrderSummary 
                   cart={cart}
                   subtotal={total}
                   storeCountry={firstStoreCountry}
                   shippingInfo={storeShippingInfo}
                   liveShippingRate={liveShippingRate}
                   isLoadingRates={isLoadingRates && hasEnteredPostcode}
-                  shiprocketEnabled={shiprocketEnabled}
+                  shiprocketEnabled={shiprocketEnabled || !!liveShippingRate}
                   hasEnteredPostcode={hasEnteredPostcode}
                   shippingError={shippingError}
                   isLoadingShiprocketStatus={isLoadingShiprocketStatus}
