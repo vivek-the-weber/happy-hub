@@ -77,7 +77,6 @@ export default function Cart() {
 
   // Handle postal code change from form - stable callback reference
   const handlePostalCodeChange = useCallback((postalCode: string) => {
-    console.log('[Cart] handlePostalCodeChange:', postalCode);
     setCustomerPostalCode(postalCode);
   }, []);
 
