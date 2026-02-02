@@ -114,16 +114,6 @@ export default function Cart() {
   const shippingError = getShippingError();
   const liveShippingRate = getLiveShippingRate();
 
-  // Debug logging
-  console.log('[Cart] Render state:', {
-    customerPostalCode,
-    firstStoreId,
-    defaultWeight,
-    shiprocketEnabled,
-    hasEnteredPostcode,
-    isLoadingRates,
-    liveRates,
-  });
 
   const handlePlaceOrder = async (formData: CheckoutFormData) => {
     if (!formData.fullName.trim() || !formData.email.trim() || !formData.phone.trim() || 

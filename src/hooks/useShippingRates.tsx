@@ -32,9 +32,6 @@ export function useShippingRates(
 ) {
   const enabled = !!storeId && !!deliveryPostcode && deliveryPostcode.length >= 6;
   
-  console.log('[useShippingRates] Called with:', { storeId, deliveryPostcode, weight });
-  console.log('[useShippingRates] Enabled:', enabled);
-  
   return useQuery({
     queryKey: ['shipping-rates', storeId, deliveryPostcode, weight],
     queryFn: async (): Promise<ShippingRatesResult> => {
