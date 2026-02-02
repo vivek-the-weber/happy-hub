@@ -25,6 +25,7 @@ interface CheckoutOrderSummaryProps {
   shiprocketEnabled?: boolean;
   hasEnteredPostcode?: boolean;
   shippingError?: string | null;
+  isLoadingShiprocketStatus?: boolean;
 }
 
 export function CheckoutOrderSummary({ 
@@ -37,6 +38,7 @@ export function CheckoutOrderSummary({
   shiprocketEnabled,
   hasEnteredPostcode,
   shippingError,
+  isLoadingShiprocketStatus,
 }: CheckoutOrderSummaryProps) {
   // Determine which shipping cost to use
   const useLiveRate = shiprocketEnabled && liveShippingRate && !shippingError;
@@ -45,7 +47,16 @@ export function CheckoutOrderSummary({
   let shippingDisplay: React.ReactNode;
   let deliveryDisplay: React.ReactNode = null;
 
-  if (shiprocketEnabled) {
+  // Show loading state while determining shipping mode
+  if (isLoadingShiprocketStatus) {
+    shippingCost = 0;
+    shippingDisplay = (
+      <span className="text-background/40 flex items-center gap-2">
+        <Loader2 className="h-3 w-3 animate-spin" />
+        Loading...
+      </span>
+    );
+  } else if (shiprocketEnabled) {
     // Shiprocket is enabled for this store
     if (!hasEnteredPostcode) {
       // Customer hasn't entered postal code yet
