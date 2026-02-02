@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Trash2, Minus, Plus, ShoppingBag, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -72,10 +72,11 @@ export default function Cart() {
     }
   }, [isCheckout, firstStoreId]);
 
-  // Handle postal code change from form
-  const handlePostalCodeChange = (postalCode: string) => {
+  // Handle postal code change from form - stable callback reference
+  const handlePostalCodeChange = useCallback((postalCode: string) => {
+    console.log('[Cart] handlePostalCodeChange:', postalCode);
     setCustomerPostalCode(postalCode);
-  };
+  }, []);
 
   // Determine shipping error message
   const getShippingError = (): string | null => {

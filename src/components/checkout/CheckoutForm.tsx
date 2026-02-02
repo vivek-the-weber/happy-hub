@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -52,31 +52,14 @@ export function CheckoutForm({ initialCountry, isSubmitting, onSubmit, onPostalC
     notes: '',
   });
 
-  // Debounce timer for postal code changes
-  const debounceRef = useRef<NodeJS.Timeout | null>(null);
-
   const updateField = (field: keyof CheckoutFormData, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     
-    // Debounce postal code changes
+    // Call postal code change handler immediately - React Query handles caching
     if (field === 'postalCode' && onPostalCodeChange) {
-      if (debounceRef.current) {
-        clearTimeout(debounceRef.current);
-      }
-      debounceRef.current = setTimeout(() => {
-        onPostalCodeChange(value);
-      }, 500);
+      onPostalCodeChange(value);
     }
   };
-
-  // Cleanup debounce timer
-  useEffect(() => {
-    return () => {
-      if (debounceRef.current) {
-        clearTimeout(debounceRef.current);
-      }
-    };
-  }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
