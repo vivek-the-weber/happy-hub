@@ -1,40 +1,124 @@
 
 
-## Fix: Shipping Rates Not Displaying After Postal Code Entry
+## Fix: Shipping Rates Not Fetching After Postal Code Entry
 
-### Problem Identified
+### Problem Summary
 
-After thorough analysis, I found that the shipping rates **are being fetched successfully** (confirmed by edge function logs and direct API testing). The `shiprocket-rates` edge function returns valid data with rates like ₹35.4 for India Post.
+The checkout is showing manual shipping settings (₹50.00, 5-7 days) instead of live Shiprocket rates (₹35.4 via India Post) even though:
 
-The issue is likely a **React state/query synchronization problem** where:
+1. Shiprocket IS configured for the store (confirmed in database)
+2. The edge function IS working (confirmed via direct API test)
+3. The postal code `411061` IS valid and returns live rates
 
-1. The `useStoreShiprocketStatus` query hasn't completed when the user enters a postal code
-2. The `shiprocketEnabled` flag evaluates to `false` because `shiprocketStatus` is still loading
-3. As a result, the UI falls back to manual shipping settings instead of showing live rates
+### Root Cause
 
-### Root Cause Analysis
+The debounced postal code callback in `CheckoutForm` isn't reliably updating the parent's state. When React Query checks the `enabled` condition, `customerPostalCode` is still empty or stale.
 
 ```text
-User enters checkout → isCheckout = true
-         |
-         v
-useStoreShiprocketStatus starts fetching
-(shiprocketStatus = undefined initially)
-         |
-         v
-shiprocketEnabled = undefined?.hasShiprocket && !!undefined?.pickupPostcode
-                  = false (WRONG - should wait for status to load!)
-         |
-         v
-CheckoutOrderSummary receives shiprocketEnabled = false
-         |
-         v
-Shows manual shipping settings instead of waiting/showing live rates
+User types postal code in form
+          |
+          v
+CheckoutForm: updateField('postalCode', '411061')
+          |
+          v (500ms debounce)
+CheckoutForm: onPostalCodeChange('411061')  <-- May not fire reliably
+          |
+          v
+Cart.tsx: setCustomerPostalCode('411061')   <-- State not updating
+          |
+          v
+useShippingRates: enabled = false (postalCode still empty)
+          |
+          v
+Falls back to manual shipping (₹50.00)
 ```
 
 ### Solution
 
-Add proper loading state handling so the UI waits for `shiprocketStatus` to load before determining which shipping mode to use.
+Add console debugging first to identify where the flow breaks, then implement a more reliable state synchronization pattern.
+
+---
+
+### Implementation Plan
+
+#### Step 1: Add Debug Logging
+
+Add console logs to trace the postal code flow:
+
+**CheckoutForm.tsx:**
+```typescript
+// In updateField function
+if (field === 'postalCode' && onPostalCodeChange) {
+  console.log('[CheckoutForm] Setting debounce timer for postal code:', value);
+  if (debounceRef.current) {
+    clearTimeout(debounceRef.current);
+  }
+  debounceRef.current = setTimeout(() => {
+    console.log('[CheckoutForm] Debounce fired, calling onPostalCodeChange:', value);
+    onPostalCodeChange(value);
+  }, 500);
+}
+```
+
+**Cart.tsx:**
+```typescript
+const handlePostalCodeChange = (postalCode: string) => {
+  console.log('[Cart] handlePostalCodeChange called with:', postalCode);
+  setCustomerPostalCode(postalCode);
+};
+
+// Add logging for query state
+console.log('[Cart] Shipping state:', {
+  customerPostalCode,
+  hasEnteredPostcode,
+  shiprocketEnabled,
+  isLoadingRates,
+  liveRates,
+});
+```
+
+#### Step 2: Add useEffect Debug
+
+Track state changes in Cart.tsx:
+
+```typescript
+useEffect(() => {
+  console.log('[Cart] customerPostalCode changed to:', customerPostalCode);
+}, [customerPostalCode]);
+```
+
+#### Step 3: Fix Potential Issues
+
+Based on debugging, the likely fixes are:
+
+**Option A: Ensure callback identity is stable**
+```typescript
+// In Cart.tsx - use useCallback
+const handlePostalCodeChange = useCallback((postalCode: string) => {
+  console.log('[Cart] handlePostalCodeChange:', postalCode);
+  setCustomerPostalCode(postalCode);
+}, []);
+```
+
+**Option B: Remove debounce from form, rely on React Query's staleTime**
+
+The 500ms debounce combined with React Query's caching might cause issues. A simpler approach:
+
+```typescript
+// CheckoutForm.tsx - call immediately, let React Query handle caching
+if (field === 'postalCode' && onPostalCodeChange) {
+  onPostalCodeChange(value);
+}
+```
+
+React Query already has:
+- `staleTime: 5 * 60 * 1000` (5 minutes cache)
+- `enabled: deliveryPostcode.length >= 6` (only fetches for valid postcodes)
+
+This is safe because:
+1. React Query won't re-fetch if data is fresh
+2. The query only runs when postcode >= 6 characters
+3. Rate limiting protects against abuse
 
 ---
 
@@ -42,86 +126,47 @@ Add proper loading state handling so the UI waits for `shiprocketStatus` to load
 
 | File | Changes |
 |------|---------|
-| `src/pages/Cart.tsx` | Pass shiprocket loading state to order summary |
-| `src/components/checkout/CheckoutOrderSummary.tsx` | Handle loading state for shiprocket status |
+| `src/pages/Cart.tsx` | Add `useCallback` for handler, add debug logging |
+| `src/components/checkout/CheckoutForm.tsx` | Simplify postal code callback (remove debounce) |
 
 ---
 
-### Implementation Details
+### Alternative: Keep Debounce But Use Stable Reference
 
-#### 1. Update Cart.tsx
-
-Pass the loading state from `useStoreShiprocketStatus` to the checkout UI:
+If debouncing is preferred for UX reasons (prevents flicker):
 
 ```typescript
-// Get loading state from the hook
-const { data: shiprocketStatus, isLoading: isLoadingShiprocketStatus } = useStoreShiprocketStatus(firstStoreId, isCheckout);
+// CheckoutForm.tsx
+const latestOnPostalCodeChange = useRef(onPostalCodeChange);
+useEffect(() => {
+  latestOnPostalCodeChange.current = onPostalCodeChange;
+}, [onPostalCodeChange]);
 
-// Pass to CheckoutOrderSummary
-<CheckoutOrderSummary 
-  ...
-  isLoadingShiprocketStatus={isLoadingShiprocketStatus}
-  shiprocketEnabled={shiprocketEnabled}
-  ...
-/>
-```
-
-#### 2. Update CheckoutOrderSummary.tsx
-
-Add handling for when shiprocket status is still loading:
-
-```typescript
-interface CheckoutOrderSummaryProps {
-  // ... existing props
-  isLoadingShiprocketStatus?: boolean;
-}
-
-// In the component:
-if (isLoadingShiprocketStatus) {
-  // Show loading state while determining shipping mode
-  shippingDisplay = (
-    <span className="text-background/40 flex items-center gap-2">
-      <Loader2 className="h-3 w-3 animate-spin" />
-      Loading...
-    </span>
-  );
-}
+// Use the ref in the debounce
+debounceRef.current = setTimeout(() => {
+  latestOnPostalCodeChange.current?.(value);
+}, 500);
 ```
 
 ---
 
-### Alternative Issue: Query Not Re-triggering
+### Verification
 
-If the above doesn't fix it, there might be an issue with React Query not re-fetching when the postal code changes. The current debounce implementation should work, but we can add debugging:
+After implementing:
 
-```typescript
-// In CheckoutForm.tsx - add console log to verify callback fires
-if (field === 'postalCode' && onPostalCodeChange) {
-  console.log('Postal code changed, setting debounce timer:', value);
-  // ...
-}
-```
-
----
-
-### Verification Steps
-
-After implementing the fix:
-
-1. Add item to cart
-2. Go to checkout
-3. Enter a 6-digit Indian postal code (e.g., `411061`)
-4. Verify the shipping rate updates to show live Shiprocket rates (e.g., "₹35.4 via India Post-Speed Post Air Prepaid")
-5. Verify the estimated delivery time appears (e.g., "Est. delivery: 5 days")
+1. Open checkout with items from store `73894fd7-42dd-4bc2-bc37-cd77b324f867`
+2. Enter postal code `411061`
+3. Verify console logs show the flow working
+4. Confirm shipping updates to "₹35.4 via India Post-Speed Post Air Prepaid"
+5. Confirm estimated delivery shows "5 days" instead of "5-7 days"
 
 ---
 
 ### Technical Summary
 
-1. **Add loading state tracking** for the Shiprocket status query
-2. **Pass loading state to UI** so it can show appropriate loading indicators
-3. **Prevent premature fallback** to manual settings while shiprocket status is still loading
-4. **Add console logging** to debug the postal code change flow if needed
-
-This ensures the UI properly waits for all necessary data before deciding which shipping calculation method to use.
+1. **Root cause**: Debounced callback not reliably triggering parent state update
+2. **Debug first**: Add logging to pinpoint exact failure point
+3. **Simplify**: Remove form-level debounce, rely on React Query caching
+4. **Stable references**: Use `useCallback` for handler in parent
+5. **Fallback works**: Manual settings display correctly when Shiprocket unavailable
 
