@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 import { formatPrice } from '@/lib/currency';
 import { CheckoutForm, CheckoutFormData } from '@/components/checkout/CheckoutForm';
 import { CheckoutOrderSummary } from '@/components/checkout/CheckoutOrderSummary';
+import { useShippingRates, useStoreShiprocketStatus } from '@/hooks/useShippingRates';
 
 interface StoreShippingInfo {
   freeShipping: boolean;
@@ -22,6 +23,7 @@ export default function Cart() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [orderPlaced, setOrderPlaced] = useState<{ storeName: string; paymentInstructions: string | null } | null>(null);
   const [storeShippingInfo, setStoreShippingInfo] = useState<StoreShippingInfo | null>(null);
+  const [customerPostalCode, setCustomerPostalCode] = useState('');
 
   const itemsByStore = cart.reduce((acc, item) => {
     if (!acc[item.storeId]) {
@@ -34,7 +36,21 @@ export default function Cart() {
   const firstStoreId = Object.keys(itemsByStore)[0];
   const firstStoreCountry = Object.values(itemsByStore)[0]?.storeCountry || 'IN';
 
-  // Fetch store shipping info when entering checkout
+  // Check if store has Shiprocket connected
+  const { data: shiprocketStatus } = useStoreShiprocketStatus(firstStoreId, isCheckout);
+
+  // Fetch live shipping rates when postal code is entered
+  const { 
+    data: liveRates, 
+    isLoading: isLoadingRates,
+    error: ratesError,
+  } = useShippingRates(
+    firstStoreId,
+    customerPostalCode,
+    shiprocketStatus?.defaultWeight || 0.5
+  );
+
+  // Fetch store shipping info when entering checkout (for fallback)
   useEffect(() => {
     if (isCheckout && firstStoreId) {
       const fetchShippingInfo = async () => {
@@ -55,6 +71,38 @@ export default function Cart() {
       fetchShippingInfo();
     }
   }, [isCheckout, firstStoreId]);
+
+  // Handle postal code change from form
+  const handlePostalCodeChange = (postalCode: string) => {
+    setCustomerPostalCode(postalCode);
+  };
+
+  // Determine shipping error message
+  const getShippingError = (): string | null => {
+    if (ratesError) {
+      return 'Unable to fetch rates';
+    }
+    if (liveRates?.notServiceable) {
+      return 'Delivery not available to this area';
+    }
+    if (liveRates?.tokenExpired) {
+      return 'Shipping rates unavailable';
+    }
+    if (liveRates?.error && !liveRates.notConfigured) {
+      return liveRates.error;
+    }
+    return null;
+  };
+
+  // Prepare live shipping rate for display
+  const getLiveShippingRate = () => {
+    if (!liveRates?.success) return null;
+    return {
+      rate: liveRates.cheapestRate,
+      etd: liveRates.etd,
+      courierName: liveRates.courierName,
+    };
+  };
 
   const handlePlaceOrder = async (formData: CheckoutFormData) => {
     if (!formData.fullName.trim() || !formData.email.trim() || !formData.phone.trim() || 
@@ -201,6 +249,11 @@ export default function Cart() {
 
   // Checkout form - two column layout
   if (isCheckout) {
+    const shiprocketEnabled = shiprocketStatus?.hasShiprocket && !!shiprocketStatus?.pickupPostcode;
+    const hasEnteredPostcode = customerPostalCode.length >= 6;
+    const shippingError = getShippingError();
+    const liveShippingRate = getLiveShippingRate();
+
     return (
       <div className="min-h-screen bg-surface-inverse text-background flex flex-col">
         <header className="p-6 flex items-center justify-between">
@@ -227,6 +280,7 @@ export default function Cart() {
                   initialCountry={firstStoreCountry}
                   isSubmitting={isSubmitting}
                   onSubmit={handlePlaceOrder}
+                  onPostalCodeChange={handlePostalCodeChange}
                 />
               </div>
 
@@ -237,6 +291,11 @@ export default function Cart() {
                   subtotal={total}
                   storeCountry={firstStoreCountry}
                   shippingInfo={storeShippingInfo}
+                  liveShippingRate={liveShippingRate}
+                  isLoadingRates={isLoadingRates && hasEnteredPostcode}
+                  shiprocketEnabled={shiprocketEnabled}
+                  hasEnteredPostcode={hasEnteredPostcode}
+                  shippingError={shippingError}
                 />
               </div>
             </div>
