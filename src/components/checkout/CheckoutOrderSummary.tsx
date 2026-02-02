@@ -1,5 +1,6 @@
 import { CartItem } from '@/lib/cart';
 import { formatPrice } from '@/lib/currency';
+import { Loader2, Truck, AlertCircle } from 'lucide-react';
 
 interface StoreShippingInfo {
   freeShipping: boolean;
@@ -7,20 +8,121 @@ interface StoreShippingInfo {
   estimatedDelivery: string | null;
 }
 
+interface LiveShippingRate {
+  rate: number;
+  etd: string;
+  courierName: string;
+}
+
 interface CheckoutOrderSummaryProps {
   cart: CartItem[];
   subtotal: number;
   storeCountry: string;
   shippingInfo: StoreShippingInfo | null;
+  // Live shipping rate props
+  liveShippingRate?: LiveShippingRate | null;
+  isLoadingRates?: boolean;
+  shiprocketEnabled?: boolean;
+  hasEnteredPostcode?: boolean;
+  shippingError?: string | null;
 }
 
 export function CheckoutOrderSummary({ 
   cart, 
   subtotal, 
   storeCountry, 
-  shippingInfo 
+  shippingInfo,
+  liveShippingRate,
+  isLoadingRates,
+  shiprocketEnabled,
+  hasEnteredPostcode,
+  shippingError,
 }: CheckoutOrderSummaryProps) {
-  const shippingCost = shippingInfo?.freeShipping ? 0 : (shippingInfo?.shippingCharge || 0);
+  // Determine which shipping cost to use
+  const useLiveRate = shiprocketEnabled && liveShippingRate && !shippingError;
+  
+  let shippingCost: number;
+  let shippingDisplay: React.ReactNode;
+  let deliveryDisplay: React.ReactNode = null;
+
+  if (shiprocketEnabled) {
+    // Shiprocket is enabled for this store
+    if (!hasEnteredPostcode) {
+      // Customer hasn't entered postal code yet
+      shippingCost = 0;
+      shippingDisplay = (
+        <span className="text-background/40 text-sm">Enter pincode for estimate</span>
+      );
+    } else if (isLoadingRates) {
+      // Loading rates
+      shippingCost = 0;
+      shippingDisplay = (
+        <span className="text-background/40 flex items-center gap-2">
+          <Loader2 className="h-3 w-3 animate-spin" />
+          Calculating...
+        </span>
+      );
+    } else if (shippingError) {
+      // Error fetching rates - fall back to manual settings
+      shippingCost = shippingInfo?.freeShipping ? 0 : (shippingInfo?.shippingCharge || 0);
+      shippingDisplay = shippingInfo?.freeShipping ? (
+        <span className="text-primary">Free</span>
+      ) : (
+        <span>{formatPrice(shippingCost, storeCountry)}</span>
+      );
+      deliveryDisplay = (
+        <p className="text-xs text-warning flex items-center gap-1 mt-1">
+          <AlertCircle className="h-3 w-3" />
+          {shippingError}
+        </p>
+      );
+    } else if (liveShippingRate) {
+      // Live rate available
+      shippingCost = liveShippingRate.rate;
+      shippingDisplay = (
+        <div className="text-right">
+          <span>{formatPrice(shippingCost, storeCountry)}</span>
+          <span className="text-background/40 text-xs ml-1">
+            via {liveShippingRate.courierName}
+          </span>
+        </div>
+      );
+      deliveryDisplay = (
+        <p className="text-xs text-primary flex items-center gap-1 mt-1">
+          <Truck className="h-3 w-3" />
+          Est. delivery: {liveShippingRate.etd}
+        </p>
+      );
+    } else {
+      // No rates returned (shouldn't happen normally)
+      shippingCost = shippingInfo?.freeShipping ? 0 : (shippingInfo?.shippingCharge || 0);
+      shippingDisplay = shippingInfo?.freeShipping ? (
+        <span className="text-primary">Free</span>
+      ) : (
+        <span>{formatPrice(shippingCost, storeCountry)}</span>
+      );
+    }
+  } else {
+    // No Shiprocket - use manual store settings
+    shippingCost = shippingInfo?.freeShipping ? 0 : (shippingInfo?.shippingCharge || 0);
+    
+    if (shippingInfo === null) {
+      shippingDisplay = <span className="text-background/40">Calculating...</span>;
+    } else if (shippingInfo.freeShipping) {
+      shippingDisplay = <span className="text-primary">Free</span>;
+    } else {
+      shippingDisplay = <span>{formatPrice(shippingCost, storeCountry)}</span>;
+    }
+
+    if (shippingInfo?.estimatedDelivery) {
+      deliveryDisplay = (
+        <p className="text-xs text-background/40">
+          Est. delivery: {shippingInfo.estimatedDelivery}
+        </p>
+      );
+    }
+  }
+
   const total = subtotal + shippingCost;
 
   return (
@@ -71,22 +173,12 @@ export function CheckoutOrderSummary({
           <span>{formatPrice(subtotal, storeCountry)}</span>
         </div>
         
-        <div className="flex justify-between text-sm">
+        <div className="flex justify-between text-sm items-start">
           <span className="text-background/60">Shipping</span>
-          {shippingInfo === null ? (
-            <span className="text-background/40">Calculating...</span>
-          ) : shippingInfo.freeShipping ? (
-            <span className="text-primary">Free</span>
-          ) : (
-            <span>{formatPrice(shippingCost, storeCountry)}</span>
-          )}
+          {shippingDisplay}
         </div>
         
-        {shippingInfo?.estimatedDelivery && (
-          <p className="text-xs text-background/40">
-            Est. delivery: {shippingInfo.estimatedDelivery}
-          </p>
-        )}
+        {deliveryDisplay}
       </div>
 
       {/* Total */}

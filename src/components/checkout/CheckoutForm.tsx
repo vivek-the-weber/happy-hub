@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -22,6 +22,7 @@ interface CheckoutFormProps {
   initialCountry: string;
   isSubmitting: boolean;
   onSubmit: (data: CheckoutFormData) => void;
+  onPostalCodeChange?: (postalCode: string) => void;
 }
 
 const COUNTRY_NAMES: Record<string, string> = {
@@ -37,7 +38,7 @@ const COUNTRY_NAMES: Record<string, string> = {
   JP: 'Japan',
 };
 
-export function CheckoutForm({ initialCountry, isSubmitting, onSubmit }: CheckoutFormProps) {
+export function CheckoutForm({ initialCountry, isSubmitting, onSubmit, onPostalCodeChange }: CheckoutFormProps) {
   const [formData, setFormData] = useState<CheckoutFormData>({
     fullName: '',
     email: '',
@@ -51,9 +52,31 @@ export function CheckoutForm({ initialCountry, isSubmitting, onSubmit }: Checkou
     notes: '',
   });
 
+  // Debounce timer for postal code changes
+  const debounceRef = useRef<NodeJS.Timeout | null>(null);
+
   const updateField = (field: keyof CheckoutFormData, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+    
+    // Debounce postal code changes
+    if (field === 'postalCode' && onPostalCodeChange) {
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current);
+      }
+      debounceRef.current = setTimeout(() => {
+        onPostalCodeChange(value);
+      }, 500);
+    }
   };
+
+  // Cleanup debounce timer
+  useEffect(() => {
+    return () => {
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current);
+      }
+    };
+  }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
