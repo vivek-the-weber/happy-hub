@@ -22,6 +22,7 @@ export interface ShippingRatesResult {
   notConfigured?: boolean;
   notServiceable?: boolean;
   tokenExpired?: boolean;
+  rateLimited?: boolean;
 }
 
 export function useShippingRates(
@@ -40,6 +41,15 @@ export function useShippingRates(
           cod: 0 
         },
       });
+
+      // Handle rate limiting
+      if (data?.rateLimited) {
+        return {
+          success: false,
+          error: 'Too many requests. Please wait a moment.',
+          rateLimited: true,
+        } as ShippingRatesResult;
+      }
 
       if (error) {
         console.error('Shipping rates fetch error:', error);
