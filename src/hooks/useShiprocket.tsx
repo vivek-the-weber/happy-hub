@@ -112,3 +112,28 @@ export function useDisconnectShiprocket() {
     },
   });
 }
+
+export function useRefreshPickupLocation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ storeId }: { storeId: string }) => {
+      const { data, error } = await supabase.functions.invoke('shiprocket-auth', {
+        body: {
+          action: 'refresh-pickup',
+          storeId,
+        },
+      });
+
+      if (error) throw new Error(error.message);
+      if (data?.error) throw new Error(data.error);
+      
+      return data;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ 
+        queryKey: ['shiprocket-connection', variables.storeId] 
+      });
+    },
+  });
+}
