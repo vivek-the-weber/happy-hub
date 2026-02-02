@@ -6,6 +6,48 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
+// Helper function to fetch pickup locations from Shiprocket
+async function fetchPickupLocations(token: string): Promise<{ postcode: string | null; locationName: string | null }> {
+  try {
+    console.log('Fetching pickup locations from Shiprocket...');
+    const pickupResponse = await fetch(
+      'https://apiv2.shiprocket.in/v1/external/settings/company/pickup',
+      {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+
+    if (!pickupResponse.ok) {
+      console.error('Pickup locations fetch failed:', pickupResponse.status);
+      return { postcode: null, locationName: null };
+    }
+
+    const pickupData = await pickupResponse.json();
+    const addresses = pickupData.data?.shipping_address || [];
+    
+    // Find primary location or use first one
+    const primaryAddress = addresses.find((a: any) => a.is_primary_location === 1) || addresses[0];
+    
+    if (primaryAddress) {
+      console.log('Found pickup location:', primaryAddress.pickup_location, 'Postcode:', primaryAddress.pin_code);
+      return { 
+        postcode: primaryAddress.pin_code || null, 
+        locationName: primaryAddress.pickup_location || null 
+      };
+    }
+
+    console.log('No pickup locations found');
+    return { postcode: null, locationName: null };
+  } catch (error) {
+    console.error('Error fetching pickup locations:', error);
+    return { postcode: null, locationName: null };
+  }
+}
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -92,13 +134,17 @@ serve(async (req) => {
         );
       }
 
-      // Insert into shiprocket_connections table
+      // Fetch pickup locations after successful authentication
+      const { postcode: pickupPostcode } = await fetchPickupLocations(shiprocketData.token);
+
+      // Insert into shiprocket_connections table with auto-fetched postcode
       const { error: insertError } = await supabase
         .from('shiprocket_connections')
         .insert({
           store_id: storeId,
           email: email,
           token: shiprocketData.token,
+          pickup_postcode: pickupPostcode,
         });
 
       if (insertError) {
@@ -110,6 +156,7 @@ serve(async (req) => {
             .update({
               email: email,
               token: shiprocketData.token,
+              pickup_postcode: pickupPostcode,
             })
             .eq('store_id', storeId);
 
@@ -129,9 +176,13 @@ serve(async (req) => {
         }
       }
 
-      console.log('Shiprocket connected successfully for store:', storeId);
+      console.log('Shiprocket connected successfully for store:', storeId, 'Pickup postcode:', pickupPostcode);
       return new Response(
-        JSON.stringify({ success: true, message: 'Connected to Shiprocket successfully' }),
+        JSON.stringify({ 
+          success: true, 
+          message: 'Connected to Shiprocket successfully',
+          pickup_postcode: pickupPostcode,
+        }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
 
@@ -184,9 +235,86 @@ serve(async (req) => {
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
 
+    } else if (action === 'refresh-pickup') {
+      if (!storeId) {
+        return new Response(
+          JSON.stringify({ error: 'Store ID is required' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Verify user owns this store
+      const { data: store, error: storeError } = await supabase
+        .from('stores')
+        .select('id, owner_id')
+        .eq('id', storeId)
+        .maybeSingle();
+
+      if (storeError || !store) {
+        return new Response(
+          JSON.stringify({ error: 'Store not found' }),
+          { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      if (store.owner_id !== userId) {
+        return new Response(
+          JSON.stringify({ error: 'You do not own this store' }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Get current Shiprocket connection
+      const { data: connection, error: connError } = await supabase
+        .from('shiprocket_connections')
+        .select('token')
+        .eq('store_id', storeId)
+        .maybeSingle();
+
+      if (connError || !connection) {
+        return new Response(
+          JSON.stringify({ error: 'No Shiprocket connection found. Please reconnect.' }),
+          { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Fetch pickup locations with stored token
+      const { postcode: pickupPostcode, locationName } = await fetchPickupLocations(connection.token);
+
+      if (!pickupPostcode) {
+        return new Response(
+          JSON.stringify({ error: 'No pickup location configured in Shiprocket. Token may be expired - try reconnecting.' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Update the connection with new postcode
+      const { error: updateError } = await supabase
+        .from('shiprocket_connections')
+        .update({ pickup_postcode: pickupPostcode })
+        .eq('store_id', storeId);
+
+      if (updateError) {
+        console.error('Failed to update pickup postcode:', updateError);
+        return new Response(
+          JSON.stringify({ error: 'Failed to update pickup location' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      console.log('Pickup location refreshed for store:', storeId, 'Postcode:', pickupPostcode);
+      return new Response(
+        JSON.stringify({ 
+          success: true, 
+          pickup_location: locationName,
+          pickup_postcode: pickupPostcode,
+        }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+
     } else {
       return new Response(
-        JSON.stringify({ error: 'Invalid action. Use "connect" or "disconnect"' }),
+        JSON.stringify({ error: 'Invalid action. Use "connect", "disconnect", or "refresh-pickup"' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }

@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
-import { Truck, Loader2 } from 'lucide-react';
+import { Truck, Loader2, RefreshCw } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { useUpdateStore, Store } from '@/hooks/useStore';
-import { useShiprocketConnection, useDisconnectShiprocket, useUpdateShiprocketConnection } from '@/hooks/useShiprocket';
+import { useShiprocketConnection, useDisconnectShiprocket, useUpdateShiprocketConnection, useRefreshPickupLocation } from '@/hooks/useShiprocket';
 import { ShiprocketConnectModal } from './ShiprocketConnectModal';
 import { toast } from 'sonner';
 import { getCurrencySymbol } from '@/lib/currency';
@@ -18,13 +18,13 @@ export function ShippingSettings({ store }: ShippingSettingsProps) {
   const updateStore = useUpdateStore();
   const disconnectShiprocket = useDisconnectShiprocket();
   const updateShiprocketConnection = useUpdateShiprocketConnection();
+  const refreshPickupLocation = useRefreshPickupLocation();
   const { data: shiprocketConnection, isLoading: isLoadingConnection } = useShiprocketConnection(store.id);
 
   const [estimatedDeliveryTime, setEstimatedDeliveryTime] = useState('');
   const [shippingCharge, setShippingCharge] = useState('0');
   const [freeShipping, setFreeShipping] = useState(false);
   const [shiprocketModalOpen, setShiprocketModalOpen] = useState(false);
-  const [pickupPostcode, setPickupPostcode] = useState('');
   const [defaultWeight, setDefaultWeight] = useState('0.5');
 
   useEffect(() => {
@@ -37,7 +37,6 @@ export function ShippingSettings({ store }: ShippingSettingsProps) {
 
   useEffect(() => {
     if (shiprocketConnection) {
-      setPickupPostcode(shiprocketConnection.pickup_postcode || '');
       setDefaultWeight(String(shiprocketConnection.default_weight || 0.5));
     }
   }, [shiprocketConnection]);
@@ -53,11 +52,10 @@ export function ShippingSettings({ store }: ShippingSettingsProps) {
         free_shipping: freeShipping,
       });
 
-      // Save Shiprocket settings if connected
+      // Save Shiprocket settings if connected (only default weight is editable)
       if (shiprocketConnection) {
         await updateShiprocketConnection.mutateAsync({
           storeId: store.id,
-          pickup_postcode: pickupPostcode || undefined,
           default_weight: parseFloat(defaultWeight) || 0.5,
         });
       }
@@ -80,6 +78,15 @@ export function ShippingSettings({ store }: ShippingSettingsProps) {
       } catch (error: any) {
         toast.error(error.message || 'Failed to disconnect from Shiprocket');
       }
+    }
+  };
+
+  const handleRefreshPickup = async () => {
+    try {
+      await refreshPickupLocation.mutateAsync({ storeId: store.id });
+      toast.success('Pickup location synced from Shiprocket');
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to refresh pickup location');
     }
   };
 
@@ -129,22 +136,35 @@ export function ShippingSettings({ store }: ShippingSettingsProps) {
           </div>
 
           <div className="space-y-4">
+            {/* Pickup Location - Read-only, synced from Shiprocket */}
             <div className="space-y-2">
-              <Label htmlFor="pickupPostcode" className="text-background/80">
-                Pickup Postcode
-              </Label>
-              <Input
-                id="pickupPostcode"
-                placeholder="e.g. 110001"
-                value={pickupPostcode}
-                onChange={(e) => setPickupPostcode(e.target.value)}
-                className="bg-white/5 border-white/10 text-background placeholder:text-background/40 focus:border-primary h-12 rounded-xl"
-              />
-              <p className="text-xs text-background/50">
-                Your warehouse/pickup location pincode for rate calculation
+              <Label className="text-background/80">Pickup Postcode</Label>
+              <div className="flex gap-2">
+                <Input
+                  readOnly
+                  value={shiprocketConnection?.pickup_postcode || 'Not available'}
+                  className="bg-white/5 border-white/10 text-background h-12 rounded-xl flex-1 cursor-default"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleRefreshPickup}
+                  disabled={refreshPickupLocation.isPending}
+                  className="h-12 rounded-xl border-white/10 text-background hover:bg-white/10"
+                >
+                  {refreshPickupLocation.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <RefreshCw className="h-4 w-4" />
+                  )}
+                </Button>
+              </div>
+              <p className="text-xs text-green-400">
+                ✓ Synced from your Shiprocket account
               </p>
             </div>
 
+            {/* Default Weight - Still editable */}
             <div className="space-y-2">
               <Label htmlFor="defaultWeight" className="text-background/80">
                 Default Package Weight (kg)
