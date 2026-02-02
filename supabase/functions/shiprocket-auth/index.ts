@@ -92,22 +92,41 @@ serve(async (req) => {
         );
       }
 
-      // Store the token in the database (not the password!)
-      const { error: updateError } = await supabase
-        .from('stores')
-        .update({
-          shiprocket_email: email,
-          shiprocket_token: shiprocketData.token,
-          shiprocket_connected: true,
-        })
-        .eq('id', storeId);
+      // Insert into shiprocket_connections table
+      const { error: insertError } = await supabase
+        .from('shiprocket_connections')
+        .insert({
+          store_id: storeId,
+          email: email,
+          token: shiprocketData.token,
+        });
 
-      if (updateError) {
-        console.error('Failed to update store:', updateError);
-        return new Response(
-          JSON.stringify({ error: 'Failed to save connection' }),
-          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
+      if (insertError) {
+        // Check if it's a unique constraint violation (already connected)
+        if (insertError.code === '23505') {
+          // Update existing connection instead
+          const { error: updateError } = await supabase
+            .from('shiprocket_connections')
+            .update({
+              email: email,
+              token: shiprocketData.token,
+            })
+            .eq('store_id', storeId);
+
+          if (updateError) {
+            console.error('Failed to update connection:', updateError);
+            return new Response(
+              JSON.stringify({ error: 'Failed to save connection' }),
+              { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+          }
+        } else {
+          console.error('Failed to insert connection:', insertError);
+          return new Response(
+            JSON.stringify({ error: 'Failed to save connection' }),
+            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
       }
 
       console.log('Shiprocket connected successfully for store:', storeId);
@@ -145,18 +164,14 @@ serve(async (req) => {
         );
       }
 
-      // Clear Shiprocket data
-      const { error: updateError } = await supabase
-        .from('stores')
-        .update({
-          shiprocket_email: null,
-          shiprocket_token: null,
-          shiprocket_connected: false,
-        })
-        .eq('id', storeId);
+      // Delete from shiprocket_connections table
+      const { error: deleteError } = await supabase
+        .from('shiprocket_connections')
+        .delete()
+        .eq('store_id', storeId);
 
-      if (updateError) {
-        console.error('Failed to disconnect:', updateError);
+      if (deleteError) {
+        console.error('Failed to disconnect:', deleteError);
         return new Response(
           JSON.stringify({ error: 'Failed to disconnect' }),
           { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

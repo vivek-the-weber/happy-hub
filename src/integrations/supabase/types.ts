@@ -296,6 +296,47 @@ export type Database = {
         }
         Relationships: []
       }
+      shiprocket_connections: {
+        Row: {
+          created_at: string
+          default_weight: number | null
+          email: string
+          id: string
+          pickup_postcode: string | null
+          store_id: string
+          token: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          default_weight?: number | null
+          email: string
+          id?: string
+          pickup_postcode?: string | null
+          store_id: string
+          token: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          default_weight?: number | null
+          email?: string
+          id?: string
+          pickup_postcode?: string | null
+          store_id?: string
+          token?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shiprocket_connections_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: true
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       stores: {
         Row: {
           bio: string | null
@@ -310,9 +351,6 @@ export type Database = {
           owner_id: string
           payment_instructions: string | null
           shipping_charge: number | null
-          shiprocket_connected: boolean | null
-          shiprocket_email: string | null
-          shiprocket_token: string | null
           slug: string
           updated_at: string
           whatsapp_number: string | null
@@ -330,9 +368,6 @@ export type Database = {
           owner_id: string
           payment_instructions?: string | null
           shipping_charge?: number | null
-          shiprocket_connected?: boolean | null
-          shiprocket_email?: string | null
-          shiprocket_token?: string | null
           slug: string
           updated_at?: string
           whatsapp_number?: string | null
@@ -350,9 +385,6 @@ export type Database = {
           owner_id?: string
           payment_instructions?: string | null
           shipping_charge?: number | null
-          shiprocket_connected?: boolean | null
-          shiprocket_email?: string | null
-          shiprocket_token?: string | null
           slug?: string
           updated_at?: string
           whatsapp_number?: string | null
