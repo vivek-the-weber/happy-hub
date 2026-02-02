@@ -39,6 +39,9 @@ export default function Cart() {
   // Check if store has Shiprocket connected
   const { data: shiprocketStatus, isLoading: isLoadingShiprocketStatus } = useStoreShiprocketStatus(firstStoreId, isCheckout);
 
+  // Stabilize weight value to prevent query key instability
+  const defaultWeight = shiprocketStatus?.defaultWeight ?? 0.5;
+
   // Fetch live shipping rates when postal code is entered
   const { 
     data: liveRates, 
@@ -47,7 +50,7 @@ export default function Cart() {
   } = useShippingRates(
     firstStoreId,
     customerPostalCode,
-    shiprocketStatus?.defaultWeight || 0.5
+    defaultWeight
   );
 
   // Fetch store shipping info when entering checkout (for fallback)
@@ -104,6 +107,23 @@ export default function Cart() {
       courierName: liveRates.courierName,
     };
   };
+
+  // Derived state - computed on every render for proper reactivity
+  const shiprocketEnabled = shiprocketStatus?.hasShiprocket && !!shiprocketStatus?.pickupPostcode;
+  const hasEnteredPostcode = customerPostalCode.length >= 6;
+  const shippingError = getShippingError();
+  const liveShippingRate = getLiveShippingRate();
+
+  // Debug logging
+  console.log('[Cart] Render state:', {
+    customerPostalCode,
+    firstStoreId,
+    defaultWeight,
+    shiprocketEnabled,
+    hasEnteredPostcode,
+    isLoadingRates,
+    liveRates,
+  });
 
   const handlePlaceOrder = async (formData: CheckoutFormData) => {
     if (!formData.fullName.trim() || !formData.email.trim() || !formData.phone.trim() || 
@@ -250,11 +270,6 @@ export default function Cart() {
 
   // Checkout form - two column layout
   if (isCheckout) {
-    const shiprocketEnabled = shiprocketStatus?.hasShiprocket && !!shiprocketStatus?.pickupPostcode;
-    const hasEnteredPostcode = customerPostalCode.length >= 6;
-    const shippingError = getShippingError();
-    const liveShippingRate = getLiveShippingRate();
-
     return (
       <div className="min-h-screen bg-surface-inverse text-background flex flex-col">
         <header className="p-6 flex items-center justify-between">
