@@ -1,5 +1,16 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+
+export interface ShiprocketConnection {
+  id: string;
+  store_id: string;
+  email: string;
+  token: string;
+  pickup_postcode: string | null;
+  default_weight: number;
+  created_at: string;
+  updated_at: string;
+}
 
 interface ConnectParams {
   storeId: string;
@@ -9,6 +20,49 @@ interface ConnectParams {
 
 interface DisconnectParams {
   storeId: string;
+}
+
+export function useShiprocketConnection(storeId: string | undefined) {
+  return useQuery({
+    queryKey: ['shiprocket-connection', storeId],
+    queryFn: async () => {
+      if (!storeId) return null;
+      const { data, error } = await supabase
+        .from('shiprocket_connections')
+        .select('*')
+        .eq('store_id', storeId)
+        .maybeSingle();
+      if (error) throw error;
+      return data as ShiprocketConnection | null;
+    },
+    enabled: !!storeId,
+  });
+}
+
+export function useUpdateShiprocketConnection() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ storeId, pickup_postcode, default_weight }: {
+      storeId: string;
+      pickup_postcode?: string;
+      default_weight?: number;
+    }) => {
+      const { data, error } = await supabase
+        .from('shiprocket_connections')
+        .update({ pickup_postcode, default_weight })
+        .eq('store_id', storeId)
+        .select()
+        .single();
+      if (error) throw error;
+      return data as ShiprocketConnection;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ 
+        queryKey: ['shiprocket-connection', variables.storeId] 
+      });
+    },
+  });
 }
 
 export function useConnectShiprocket() {
@@ -30,8 +84,8 @@ export function useConnectShiprocket() {
       
       return data;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['my-store'] });
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['shiprocket-connection', variables.storeId] });
     },
   });
 }
@@ -53,8 +107,8 @@ export function useDisconnectShiprocket() {
       
       return data;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['my-store'] });
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['shiprocket-connection', variables.storeId] });
     },
   });
 }

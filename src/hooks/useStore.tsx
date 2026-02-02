@@ -16,9 +16,6 @@ export interface Store {
   estimated_delivery_time: string | null;
   shipping_charge: number;
   free_shipping: boolean;
-  shiprocket_email: string | null;
-  shiprocket_token: string | null;
-  shiprocket_connected: boolean;
   created_at: string;
   updated_at: string;
 }
