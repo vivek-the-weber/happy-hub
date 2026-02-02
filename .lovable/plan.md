@@ -1,116 +1,145 @@
 
 
-## Separate Shiprocket from Store in Database
+## Auto-Fetch Shiprocket Pickup Locations
 
 ### Overview
 
-Extract Shiprocket-specific data from the `stores` table into a dedicated `shiprocket_connections` table. This improves database architecture by:
-- Separating concerns (store identity vs shipping provider)
-- Making it easier to add more shipping providers in the future
-- Cleaner `stores` table focused on store metadata
-- Better encapsulation of sensitive API credentials
+Enhance the Shiprocket integration to automatically fetch the seller's pickup locations from their Shiprocket account immediately after connecting. This removes the need for sellers to manually enter their pickup postcode - the system will retrieve it directly from their Shiprocket dashboard.
 
 ---
 
-### Current State
+### Current State vs Proposed
 
-The `stores` table currently contains these Shiprocket fields:
-
-| Column | Type | Purpose |
-|--------|------|---------|
-| `shiprocket_email` | text | Shiprocket account email |
-| `shiprocket_token` | text | JWT token for API calls |
-| `shiprocket_connected` | boolean | Connection status |
+| Aspect | Current | Proposed |
+|--------|---------|----------|
+| Pickup Postcode | Seller enters manually | Auto-fetched from Shiprocket |
+| User Experience | Extra step after connecting | Zero-config after authentication |
+| Data Source | User input (error-prone) | Shiprocket API (accurate) |
 
 ---
 
-### Proposed Schema
+### Shiprocket API: Get Pickup Locations
 
-#### New Table: `shiprocket_connections`
+**Endpoint:** `GET https://apiv2.shiprocket.in/v1/external/settings/company/pickup`
 
-| Column | Type | Nullable | Default | Purpose |
-|--------|------|----------|---------|---------|
-| `id` | uuid | No | `gen_random_uuid()` | Primary key |
-| `store_id` | uuid | No | - | FK to stores (unique) |
-| `email` | text | No | - | Shiprocket account email |
-| `token` | text | No | - | JWT token for API |
-| `pickup_postcode` | text | Yes | - | Warehouse pickup pincode |
-| `default_weight` | numeric | Yes | 0.5 | Default package weight (kg) |
-| `created_at` | timestamptz | No | `now()` | Creation timestamp |
-| `updated_at` | timestamptz | No | `now()` | Last update timestamp |
+**Headers:**
+```
+Authorization: Bearer {token}
+Content-Type: application/json
+```
 
-**Constraints:**
-- `store_id` has a UNIQUE constraint (one connection per store)
-- Foreign key to `stores(id)` with ON DELETE CASCADE
+**Response Example:**
+```json
+{
+  "data": {
+    "shipping_address": [
+      {
+        "id": 12345,
+        "pickup_location": "Primary Warehouse",
+        "name": "John Doe",
+        "email": "john@example.com",
+        "phone": "9876543210",
+        "address": "123 Main Street",
+        "address_2": "",
+        "city": "Mumbai",
+        "state": "Maharashtra",
+        "country": "India",
+        "pin_code": "400001",
+        "lat": null,
+        "long": null,
+        "is_primary_location": 1,
+        "status": 1
+      }
+    ]
+  }
+}
+```
 
 ---
 
-### Database Migration
+### Implementation Plan
 
-```sql
--- 1. Create the new shiprocket_connections table
-CREATE TABLE public.shiprocket_connections (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  store_id uuid NOT NULL UNIQUE REFERENCES public.stores(id) ON DELETE CASCADE,
-  email text NOT NULL,
-  token text NOT NULL,
-  pickup_postcode text,
-  default_weight numeric DEFAULT 0.5,
-  created_at timestamptz NOT NULL DEFAULT now(),
-  updated_at timestamptz NOT NULL DEFAULT now()
-);
+#### 1. Update Edge Function: `shiprocket-auth`
 
--- 2. Migrate existing data from stores
-INSERT INTO public.shiprocket_connections (store_id, email, token)
-SELECT id, shiprocket_email, shiprocket_token
-FROM public.stores
-WHERE shiprocket_connected = true 
-  AND shiprocket_email IS NOT NULL 
-  AND shiprocket_token IS NOT NULL;
+After successful authentication, immediately fetch pickup locations and store the primary location's postcode:
 
--- 3. Enable RLS
-ALTER TABLE public.shiprocket_connections ENABLE ROW LEVEL SECURITY;
+```text
++------------------+     +-------------------+     +-------------------+
+|  Connect Modal   | --> | shiprocket-auth   | --> | Shiprocket Login  |
+|  (credentials)   |     | Edge Function     |     | API               |
++------------------+     +-------------------+     +-------------------+
+                                |                          |
+                                v                          v
+                         Get token              Fetch pickup locations
+                                |                          |
+                                v                          v
+                         +-------------------+     +-------------------+
+                         | Save to DB with   | <-- | Return pin_code   |
+                         | pickup_postcode   |     | from primary addr |
+                         +-------------------+     +-------------------+
+```
 
--- 4. RLS Policies
-CREATE POLICY "Store owners can view their connection"
-  ON public.shiprocket_connections FOR SELECT
-  USING (EXISTS (
-    SELECT 1 FROM stores WHERE stores.id = shiprocket_connections.store_id 
-    AND stores.owner_id = auth.uid()
-  ));
+**Connect action changes:**
+1. Authenticate with Shiprocket (existing)
+2. **NEW:** Call `/settings/company/pickup` to get pickup locations
+3. Extract `pin_code` from primary location (or first location)
+4. Insert/update `shiprocket_connections` with `pickup_postcode` pre-filled
 
-CREATE POLICY "Store owners can insert connection"
-  ON public.shiprocket_connections FOR INSERT
-  WITH CHECK (EXISTS (
-    SELECT 1 FROM stores WHERE stores.id = shiprocket_connections.store_id 
-    AND stores.owner_id = auth.uid()
-  ));
+---
 
-CREATE POLICY "Store owners can update their connection"
-  ON public.shiprocket_connections FOR UPDATE
-  USING (EXISTS (
-    SELECT 1 FROM stores WHERE stores.id = shiprocket_connections.store_id 
-    AND stores.owner_id = auth.uid()
-  ));
+#### 2. Database Schema
 
-CREATE POLICY "Store owners can delete their connection"
-  ON public.shiprocket_connections FOR DELETE
-  USING (EXISTS (
-    SELECT 1 FROM stores WHERE stores.id = shiprocket_connections.store_id 
-    AND stores.owner_id = auth.uid()
-  ));
+No changes needed. The `shiprocket_connections` table already has:
+- `pickup_postcode` (text, nullable)
+- `default_weight` (numeric, default 0.5)
 
--- 5. Add updated_at trigger
-CREATE TRIGGER update_shiprocket_connections_updated_at
-  BEFORE UPDATE ON public.shiprocket_connections
-  FOR EACH ROW
-  EXECUTE FUNCTION update_updated_at_column();
+The postcode will now be auto-populated instead of manually entered.
 
--- 6. Remove old columns from stores (after confirming migration success)
-ALTER TABLE public.stores 
-  DROP COLUMN shiprocket_email,
-  DROP COLUMN shiprocket_token,
-  DROP COLUMN shiprocket_connected;
+---
+
+#### 3. Update Shipping Settings UI
+
+Change the pickup postcode field to be:
+- **Read-only** (display only, fetched from Shiprocket)
+- Show a "Refresh" button to re-fetch from Shiprocket if needed
+- Add visual indication that it's synced from Shiprocket
+
+**Updated UI Section:**
+```text
++------------------------------------------------+
+| SHIPROCKET SETTINGS                             |
++------------------------------------------------+
+| Pickup Location                                 |
+| [Primary Warehouse - 400001] 🔄 Refresh         |
+| ↳ Synced from your Shiprocket account          |
+|                                                 |
+| Default Package Weight (kg)                     |
+| [0.5________________________]                   |
+| ↳ Average weight for shipping estimates        |
++------------------------------------------------+
+```
+
+---
+
+#### 4. New Edge Function Action: `refresh-pickup`
+
+Add a new action to the `shiprocket-auth` function to allow re-fetching pickup locations:
+
+**Request:**
+```json
+{
+  "action": "refresh-pickup",
+  "storeId": "uuid"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "pickup_location": "Primary Warehouse",
+  "pickup_postcode": "400001"
+}
 ```
 
 ---
@@ -119,65 +148,76 @@ ALTER TABLE public.stores
 
 | File | Changes |
 |------|---------|
-| `src/hooks/useStore.tsx` | Remove shiprocket fields from Store interface |
-| `src/hooks/useShiprocket.tsx` | Create new hook `useShiprocketConnection` to fetch/manage connection |
-| `supabase/functions/shiprocket-auth/index.ts` | Update to insert/delete from new table |
-| `src/components/dashboard/ShippingSettings.tsx` | Use new hook, add pickup postcode field |
-| `src/components/dashboard/ShiprocketConnectModal.tsx` | No changes needed (uses hook) |
+| `supabase/functions/shiprocket-auth/index.ts` | Add pickup location fetch on connect, add refresh-pickup action |
+| `src/hooks/useShiprocket.tsx` | Add `useRefreshPickupLocation` hook |
+| `src/components/dashboard/ShippingSettings.tsx` | Make postcode read-only, add refresh button |
 
 ---
 
-### Updated Hook: `useShiprocket.tsx`
+### Edge Function Logic Updates
 
-Add new queries and types:
+**In the `connect` action, after getting token:**
 
 ```typescript
-// New interface
-export interface ShiprocketConnection {
-  id: string;
-  store_id: string;
-  email: string;
-  token: string;
-  pickup_postcode: string | null;
-  default_weight: number;
-  created_at: string;
-  updated_at: string;
-}
-
-// New query hook
-export function useShiprocketConnection(storeId: string | undefined) {
-  return useQuery({
-    queryKey: ['shiprocket-connection', storeId],
-    queryFn: async () => {
-      if (!storeId) return null;
-      const { data, error } = await supabase
-        .from('shiprocket_connections')
-        .select('*')
-        .eq('store_id', storeId)
-        .maybeSingle();
-      if (error) throw error;
-      return data as ShiprocketConnection | null;
+// After successful authentication, fetch pickup locations
+console.log('Fetching pickup locations from Shiprocket...');
+const pickupResponse = await fetch(
+  'https://apiv2.shiprocket.in/v1/external/settings/company/pickup',
+  {
+    method: 'GET',
+    headers: {
+      'Authorization': `Bearer ${shiprocketData.token}`,
+      'Content-Type': 'application/json',
     },
-    enabled: !!storeId,
-  });
+  }
+);
+
+let pickupPostcode = null;
+if (pickupResponse.ok) {
+  const pickupData = await pickupResponse.json();
+  const addresses = pickupData.data?.shipping_address || [];
+  
+  // Find primary location or use first one
+  const primaryAddress = addresses.find(a => a.is_primary_location === 1) 
+    || addresses[0];
+  
+  if (primaryAddress) {
+    pickupPostcode = primaryAddress.pin_code;
+    console.log('Found pickup postcode:', pickupPostcode);
+  }
 }
 
-// New mutation for updating pickup settings
-export function useUpdateShiprocketConnection() {
+// Insert with auto-fetched postcode
+const { error: insertError } = await supabase
+  .from('shiprocket_connections')
+  .insert({
+    store_id: storeId,
+    email: email,
+    token: shiprocketData.token,
+    pickup_postcode: pickupPostcode, // Auto-filled!
+  });
+```
+
+---
+
+### New Hook: `useRefreshPickupLocation`
+
+```typescript
+export function useRefreshPickupLocation() {
   const queryClient = useQueryClient();
+
   return useMutation({
-    mutationFn: async ({ storeId, pickup_postcode, default_weight }: {
-      storeId: string;
-      pickup_postcode?: string;
-      default_weight?: number;
-    }) => {
-      const { data, error } = await supabase
-        .from('shiprocket_connections')
-        .update({ pickup_postcode, default_weight })
-        .eq('store_id', storeId)
-        .select()
-        .single();
-      if (error) throw error;
+    mutationFn: async ({ storeId }: { storeId: string }) => {
+      const { data, error } = await supabase.functions.invoke('shiprocket-auth', {
+        body: {
+          action: 'refresh-pickup',
+          storeId,
+        },
+      });
+
+      if (error) throw new Error(error.message);
+      if (data?.error) throw new Error(data.error);
+      
       return data;
     },
     onSuccess: (_, variables) => {
@@ -191,82 +231,90 @@ export function useUpdateShiprocketConnection() {
 
 ---
 
-### Updated Edge Function Logic
+### Updated UI Component
 
-**Connect action:**
-```typescript
-// Instead of updating stores table:
-const { error: insertError } = await supabase
-  .from('shiprocket_connections')
-  .insert({
-    store_id: storeId,
-    email: email,
-    token: shiprocketData.token,
-  });
-```
+```tsx
+{/* Shiprocket Settings - Only show when connected */}
+{isConnected && (
+  <div className="space-y-4">
+    {/* Pickup Location - Read-only, synced from Shiprocket */}
+    <div className="space-y-2">
+      <Label className="text-background/80">Pickup Location</Label>
+      <div className="flex gap-2">
+        <Input
+          readOnly
+          value={shiprocketConnection.pickup_postcode || 'Not available'}
+          className="bg-white/5 border-white/10 text-background h-12 rounded-xl flex-1"
+        />
+        <Button
+          variant="outline"
+          onClick={handleRefreshPickup}
+          disabled={refreshPickup.isPending}
+          className="h-12 rounded-xl"
+        >
+          {refreshPickup.isPending ? <Loader2 className="animate-spin" /> : <RefreshCw />}
+        </Button>
+      </div>
+      <p className="text-xs text-green-400">
+        ✓ Synced from your Shiprocket account
+      </p>
+    </div>
 
-**Disconnect action:**
-```typescript
-// Instead of clearing stores fields:
-const { error: deleteError } = await supabase
-  .from('shiprocket_connections')
-  .delete()
-  .eq('store_id', storeId);
-```
-
----
-
-### UI Updates
-
-**ShippingSettings.tsx:**
-- Fetch connection status using `useShiprocketConnection(store.id)`
-- Show toggle based on `connection !== null` instead of `store.shiprocket_connected`
-- Display connected email from `connection.email`
-- Add pickup postcode input field (new)
-- Add default weight input field (new)
-
----
-
-### Data Flow Diagram
-
-```text
-+------------------+          +------------------------+
-|     stores       |          | shiprocket_connections |
-+------------------+          +------------------------+
-| id (PK)          |<---------| store_id (FK, UNIQUE)  |
-| owner_id         |          | email                  |
-| name             |          | token                  |
-| slug             |          | pickup_postcode        |
-| ...store fields  |          | default_weight         |
-+------------------+          +------------------------+
-        |
-        | 1:1 relationship
-        v
-  Store has 0 or 1 
-  Shiprocket connection
+    {/* Default Weight - Still editable */}
+    <div className="space-y-2">
+      <Label htmlFor="defaultWeight" className="text-background/80">
+        Default Package Weight (kg)
+      </Label>
+      <Input
+        id="defaultWeight"
+        type="number"
+        min="0.1"
+        step="0.1"
+        value={defaultWeight}
+        onChange={(e) => setDefaultWeight(e.target.value)}
+        className="bg-white/5 border-white/10 text-background h-12 rounded-xl"
+      />
+    </div>
+  </div>
+)}
 ```
 
 ---
 
-### Benefits
+### Error Handling
 
-| Aspect | Before | After |
-|--------|--------|-------|
-| Schema clarity | Shipping mixed with store data | Clean separation |
-| Token security | Token in widely-queried stores table | Token in dedicated, restricted table |
-| Extensibility | Hard to add new providers | Can add `delhivery_connections`, etc. |
-| Data integrity | Nullable fields could be inconsistent | Connection exists = connected |
-| Query efficiency | Always fetch shiprocket fields | Only fetch when needed |
+| Scenario | Behavior |
+|----------|----------|
+| Pickup API fails | Connection still succeeds, postcode remains null |
+| No pickup locations | Show message "No pickup location configured in Shiprocket" |
+| Token expired on refresh | Show error, suggest reconnecting |
+| Multiple locations | Use primary, or first available |
 
 ---
 
-### Migration Strategy
+### User Flow After Implementation
 
-1. Create new table with data migration
-2. Update edge function to use new table
-3. Update frontend hooks to query new table
-4. Update UI components to use new hooks
-5. Drop old columns from stores table
+1. **Seller clicks "Connect Shiprocket"**
+2. **Enters email/password** in modal
+3. **System authenticates** with Shiprocket
+4. **System auto-fetches** pickup locations
+5. **Connection saved** with postcode pre-filled
+6. **Seller sees** their pickup postcode already populated
+7. **Optional:** Seller can click "Refresh" to re-sync
 
-All done in a single coordinated release.
+This provides a seamless, zero-configuration experience after connecting to Shiprocket.
+
+---
+
+### Technical Details
+
+**Shiprocket API Reference:**
+- Endpoint: `GET /v1/external/settings/company/pickup`
+- Auth: Bearer token (same token from login)
+- Returns array of pickup locations with `pin_code` field
+
+**Primary Location Detection:**
+- Check `is_primary_location === 1` flag
+- Fallback to first address in the array
+- Store the `pickup_location` name for display (optional enhancement)
 
