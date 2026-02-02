@@ -1,439 +1,234 @@
 
 
-## Live Shipping Rate Calculation at Checkout
+## Enhance Shipping Rate Checks with Rate Limiting
 
-### Overview
+### Current State (Already Working)
 
-Integrate the Shiprocket Serviceability API to fetch real-time shipping rates during checkout. When a customer enters their postal code, the system will automatically calculate shipping costs based on:
-- Seller's pickup postcode (from `shiprocket_connections.pickup_postcode`)
-- Customer's delivery postcode
-- Package weight (from `shiprocket_connections.default_weight`)
+The implementation already supports:
+- **User enters pincode**: The `CheckoutForm` has a postal code input field
+- **Shipping checked on change**: The `onPostalCodeChange` callback with 500ms debounce triggers rate fetching
+- **React Query caching**: Results are cached for 5 minutes to prevent duplicate requests
 
----
+### What Needs to Be Added
 
-### Current State vs Proposed
-
-| Aspect | Current | Proposed |
-|--------|---------|----------|
-| Shipping Cost | Static (from `stores.shipping_charge`) | Dynamic from Shiprocket API |
-| Delivery Time | Static (from `stores.estimated_delivery_time`) | Live ETD from courier data |
-| Trigger | None | Customer enters postal code |
-| Fallback | N/A | Falls back to manual store settings |
+Add **rate limiting** to the `shiprocket-rates` edge function to prevent abuse from malicious users or bots.
 
 ---
 
-### Shiprocket Serviceability API
+### Rate Limiting Strategy
 
-**Endpoint:** `GET https://apiv2.shiprocket.in/v1/external/courier/serviceability/`
-
-**Query Parameters:**
-```text
-pickup_postcode    - Seller's pickup pincode (from DB)
-delivery_postcode  - Customer's delivery pincode
-weight             - Package weight in kg
-cod                - 0 for prepaid, 1 for COD
-mode               - "Surface" or "Air" (optional)
-```
-
-**Response Example:**
-```json
-{
-  "status": 200,
-  "data": {
-    "available_courier_companies": [
-      {
-        "courier_company_id": 1,
-        "courier_name": "BlueDart",
-        "freight_charge": 85.50,
-        "cod_charges": 35.00,
-        "estimated_delivery_days": "3-5",
-        "etd": "2026-02-07",
-        "rate": 120.50
-      },
-      {
-        "courier_company_id": 2,
-        "courier_name": "Delhivery",
-        "freight_charge": 65.00,
-        "cod_charges": 30.00,
-        "estimated_delivery_days": "4-6",
-        "etd": "2026-02-08",
-        "rate": 95.00
-      }
-    ]
-  }
-}
-```
+| Parameter | Value | Rationale |
+|-----------|-------|-----------|
+| Rate limit | 10 requests per minute per IP | Generous for legitimate users (typically 1-3 rate checks per checkout) |
+| Window | 60 seconds (sliding) | Prevents burst abuse while allowing normal usage |
+| Storage | In-memory Map | Simple, no external dependencies, sufficient for edge function |
+| Identifier | Client IP address | Works for anonymous checkout flow |
 
 ---
 
 ### Implementation Plan
 
-#### 1. New Edge Function: `shiprocket-rates`
+#### 1. Update Edge Function: `shiprocket-rates`
 
-Create a dedicated edge function for fetching shipping rates (keeping auth logic separate):
+Add IP-based rate limiting at the beginning of the request handler:
 
-**File:** `supabase/functions/shiprocket-rates/index.ts`
-
-**Request:**
-```json
-{
-  "storeId": "uuid",
-  "deliveryPostcode": "400001",
-  "weight": 0.5,
-  "cod": 0
-}
-```
-
-**Response:**
-```json
-{
-  "success": true,
-  "cheapestRate": 65.00,
-  "fastestDelivery": "3-5 days",
-  "couriers": [
-    {
-      "name": "Delhivery",
-      "rate": 65.00,
-      "etd": "4-6 days"
-    }
-  ],
-  "pickupPostcode": "411061"
-}
-```
-
-**Logic:**
-1. Fetch store's Shiprocket connection (token + pickup_postcode + default_weight)
-2. Call Shiprocket Serviceability API
-3. Return cheapest rate and fastest delivery option
-4. Handle token expiry gracefully
-
----
-
-#### 2. New Hook: `useShippingRates`
-
-Create a hook to fetch live rates from the checkout flow:
-
-**File:** `src/hooks/useShippingRates.tsx`
-
-```typescript
-export interface ShippingRate {
-  courierName: string;
-  rate: number;
-  etd: string;
-  estimatedDays: string;
-}
-
-export interface ShippingRatesResult {
-  cheapestRate: number;
-  fastestDelivery: string;
-  couriers: ShippingRate[];
-  pickupPostcode: string;
-}
-
-export function useShippingRates(
-  storeId: string | undefined,
-  deliveryPostcode: string | undefined,
-  weight: number
-) {
-  return useQuery({
-    queryKey: ['shipping-rates', storeId, deliveryPostcode, weight],
-    queryFn: async () => {
-      const { data, error } = await supabase.functions.invoke('shiprocket-rates', {
-        body: { storeId, deliveryPostcode, weight, cod: 0 }
-      });
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
-      return data as ShippingRatesResult;
-    },
-    enabled: !!storeId && !!deliveryPostcode && deliveryPostcode.length >= 6,
-    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
-    retry: 1,
-  });
-}
-```
-
----
-
-#### 3. Update Checkout Flow
-
-**File:** `src/pages/Cart.tsx`
-
-Modify the checkout section to:
-1. Check if store has Shiprocket connected
-2. Fetch live rates when customer enters postal code
-3. Display dynamic shipping cost and ETD
-4. Fall back to manual store settings if no Shiprocket connection
-
-**Flow Diagram:**
 ```text
-Customer enters checkout
-        |
-        v
+Request comes in
+       |
+       v
 +------------------+
-| Postal code      |
-| entered?         |
+| Extract client   |
+| IP from headers  |
 +------------------+
-    |           |
-   No          Yes (6+ digits)
-    |           |
-    v           v
-Use manual    Call shiprocket-rates API
-settings              |
-    |           +-----+-----+
-    |           |           |
-    |       Success      Error
-    |           |           |
-    |           v           v
-    |       Display     Fall back to
-    |       live rate   manual settings
-    |           |           |
-    +-----+-----+-----+-----+
-          |
-          v
-    Display in Order Summary
+       |
+       v
++------------------+
+| Check rate limit |
+| (10 req/min/IP)  |
++------------------+
+    |         |
+  Under     Over
+  limit     limit
+    |         |
+    v         v
+Continue   Return 429
+processing "Too Many Requests"
 ```
 
----
-
-#### 4. Update CheckoutForm
-
-**File:** `src/components/checkout/CheckoutForm.tsx`
-
-Add a callback to notify parent when postal code changes:
-
+**Rate limiter logic:**
 ```typescript
-interface CheckoutFormProps {
-  initialCountry: string;
-  isSubmitting: boolean;
-  onSubmit: (data: CheckoutFormData) => void;
-  onPostalCodeChange?: (postalCode: string) => void;  // NEW
+// In-memory store for rate limiting
+const rateLimitStore = new Map<string, { count: number; resetAt: number }>();
+
+function checkRateLimit(ip: string, maxRequests: number = 10, windowMs: number = 60000): boolean {
+  const now = Date.now();
+  const record = rateLimitStore.get(ip);
+  
+  if (!record || now > record.resetAt) {
+    // First request or window expired
+    rateLimitStore.set(ip, { count: 1, resetAt: now + windowMs });
+    return true;
+  }
+  
+  if (record.count >= maxRequests) {
+    return false; // Rate limited
+  }
+  
+  record.count++;
+  return true;
 }
 ```
 
-When postal code input changes (debounced 500ms), call `onPostalCodeChange`.
-
----
-
-#### 5. Update CheckoutOrderSummary
-
-**File:** `src/components/checkout/CheckoutOrderSummary.tsx`
-
-Enhance to display:
-- Live shipping rate when available
-- Courier name (e.g., "via Delhivery")
-- Dynamic ETD (e.g., "Delivery by Feb 7")
-- Loading state while fetching rates
-- "Check pincode" prompt if not entered
-
+**Extract IP address:**
 ```typescript
-interface CheckoutOrderSummaryProps {
-  cart: CartItem[];
-  subtotal: number;
-  storeCountry: string;
-  shippingInfo: StoreShippingInfo | null;
-  liveShippingRate?: {
-    rate: number;
-    etd: string;
-    courierName: string;
-  } | null;
-  isLoadingRates?: boolean;
-  shiprocketEnabled?: boolean;
+function getClientIP(req: Request): string {
+  // Check common proxy headers
+  const forwarded = req.headers.get('x-forwarded-for');
+  if (forwarded) {
+    return forwarded.split(',')[0].trim();
+  }
+  
+  const realIp = req.headers.get('x-real-ip');
+  if (realIp) {
+    return realIp;
+  }
+  
+  // Fallback to a generic identifier
+  return 'unknown';
 }
 ```
 
-**Updated UI:**
-```text
-+------------------------------------------------+
-| Order Summary                                   |
-+------------------------------------------------+
-| [Product thumbnail] Product Name         ₹299  |
-| [Product thumbnail] Another Product      ₹199  |
-+------------------------------------------------+
-| Subtotal                                 ₹498  |
-| Shipping (via Delhivery)                  ₹65  |
-| Est. delivery: 4-6 days                        |
-+------------------------------------------------+
-| Total                                    ₹563  |
-+------------------------------------------------+
-```
+---
+
+### Files to Modify
+
+| File | Changes |
+|------|---------|
+| `supabase/functions/shiprocket-rates/index.ts` | Add rate limiting logic with IP extraction |
 
 ---
 
-### Files to Create/Modify
-
-| File | Action | Changes |
-|------|--------|---------|
-| `supabase/functions/shiprocket-rates/index.ts` | **Create** | New edge function for rates API |
-| `supabase/config.toml` | **Modify** | Add `shiprocket-rates` function config |
-| `src/hooks/useShippingRates.tsx` | **Create** | New hook for fetching rates |
-| `src/pages/Cart.tsx` | **Modify** | Integrate live rates in checkout |
-| `src/components/checkout/CheckoutForm.tsx` | **Modify** | Add postal code change callback |
-| `src/components/checkout/CheckoutOrderSummary.tsx` | **Modify** | Display live rates |
-
----
-
-### Edge Function Logic
+### Updated Edge Function Structure
 
 ```typescript
-// shiprocket-rates/index.ts
-serve(async (req) => {
-  // 1. Get storeId, deliveryPostcode, weight from request
-  const { storeId, deliveryPostcode, weight, cod } = await req.json();
+// Rate limit configuration
+const RATE_LIMIT_MAX = 10;      // Max requests per window
+const RATE_LIMIT_WINDOW = 60000; // 60 seconds
 
-  // 2. Fetch Shiprocket connection for this store (public, no auth needed)
-  const { data: connection } = await supabase
-    .from('shiprocket_connections')
-    .select('token, pickup_postcode, default_weight')
-    .eq('store_id', storeId)
-    .maybeSingle();
+// In-memory rate limit store
+const rateLimitStore = new Map<string, { count: number; resetAt: number }>();
 
-  if (!connection?.token || !connection?.pickup_postcode) {
-    return Response({ error: 'Shiprocket not configured for this store' });
+// Helper functions
+function getClientIP(req: Request): string { ... }
+function checkRateLimit(ip: string): boolean { ... }
+
+Deno.serve(async (req) => {
+  // Handle CORS preflight
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders });
   }
 
-  // 3. Call Shiprocket Serviceability API
-  const params = new URLSearchParams({
-    pickup_postcode: connection.pickup_postcode,
-    delivery_postcode: deliveryPostcode,
-    weight: String(weight || connection.default_weight || 0.5),
-    cod: String(cod || 0),
-  });
-
-  const response = await fetch(
-    `https://apiv2.shiprocket.in/v1/external/courier/serviceability/?${params}`,
-    {
-      headers: {
-        'Authorization': `Bearer ${connection.token}`,
-        'Content-Type': 'application/json',
+  // Rate limiting check (FIRST thing after CORS)
+  const clientIP = getClientIP(req);
+  if (!checkRateLimit(clientIP)) {
+    console.log(`Rate limit exceeded for IP: ${clientIP}`);
+    return new Response(
+      JSON.stringify({ 
+        error: 'Too many requests. Please try again in a minute.',
+        rateLimited: true 
+      }),
+      { 
+        status: 429, 
+        headers: { 
+          ...corsHeaders, 
+          'Content-Type': 'application/json',
+          'Retry-After': '60'
+        } 
       }
-    }
-  );
+    );
+  }
 
-  // 4. Parse and return cheapest/fastest options
-  const data = await response.json();
-  const couriers = data.data?.available_courier_companies || [];
-  
-  // Sort by rate to find cheapest
-  const sorted = couriers.sort((a, b) => a.rate - b.rate);
-  
-  return Response({
-    success: true,
-    cheapestRate: sorted[0]?.rate || null,
-    fastestDelivery: sorted[0]?.estimated_delivery_days || null,
-    courierName: sorted[0]?.courier_name || null,
-    couriers: sorted.slice(0, 3).map(c => ({
-      name: c.courier_name,
-      rate: c.rate,
-      etd: c.estimated_delivery_days,
-    })),
-    pickupPostcode: connection.pickup_postcode,
-  });
+  // Continue with existing logic...
 });
 ```
 
 ---
 
-### Checkout Integration Flow
+### Frontend Handling
 
-**In Cart.tsx checkout section:**
+Update `useShippingRates` hook to handle 429 responses gracefully:
 
 ```typescript
-// State for live rates
-const [customerPostalCode, setCustomerPostalCode] = useState('');
+export function useShippingRates(...) {
+  return useQuery({
+    queryKey: ['shipping-rates', storeId, deliveryPostcode, weight],
+    queryFn: async (): Promise<ShippingRatesResult> => {
+      const { data, error } = await supabase.functions.invoke('shiprocket-rates', {
+        body: { storeId, deliveryPostcode, weight, cod: 0 },
+      });
 
-// Check if store has Shiprocket connected
-const { data: shiprocketConnection } = useQuery({
-  queryKey: ['shiprocket-connection-checkout', firstStoreId],
-  queryFn: async () => {
-    const { data } = await supabase
-      .from('shiprocket_connections')
-      .select('pickup_postcode, default_weight')
-      .eq('store_id', firstStoreId)
-      .maybeSingle();
-    return data;
-  },
-  enabled: isCheckout && !!firstStoreId,
-});
+      // Handle rate limiting
+      if (data?.rateLimited) {
+        return {
+          success: false,
+          error: 'Too many requests. Please wait a moment.',
+          rateLimited: true,
+        } as ShippingRatesResult;
+      }
 
-// Fetch live rates when postal code is entered
-const { data: liveRates, isLoading: isLoadingRates } = useShippingRates(
-  firstStoreId,
-  customerPostalCode,
-  shiprocketConnection?.default_weight || 0.5
-);
+      if (error) throw new Error(error.message);
+      return data as ShippingRatesResult;
+    },
+    // ... rest of options
+  });
+}
+```
+
+Update `ShippingRatesResult` interface:
+```typescript
+export interface ShippingRatesResult {
+  // ... existing fields
+  rateLimited?: boolean;
+}
 ```
 
 ---
 
-### Fallback Strategy
+### Memory Cleanup
 
-| Scenario | Behavior |
-|----------|----------|
-| Store has Shiprocket + valid postcode | Show live Shiprocket rates |
-| Store has Shiprocket + no pickup postcode | Fall back to manual settings |
-| Store has no Shiprocket connection | Use manual `shipping_charge` from store |
-| Shiprocket API fails | Fall back to manual settings with error toast |
-| Customer hasn't entered postcode | Show "Enter pincode for shipping estimate" |
-| Postcode not serviceable | Show "Delivery not available to this area" |
+Add periodic cleanup to prevent memory leaks in long-running edge functions:
 
----
-
-### Error Handling
-
-**Token Expiry:**
-- Shiprocket tokens expire after 10 days
-- If API returns 401, show message: "Shipping rates unavailable. Contact seller."
-- Seller sees notification in dashboard to reconnect
-
-**Non-Serviceable Areas:**
-- Some pincodes may not have courier coverage
-- Show friendly message: "Delivery not available to [pincode]"
-- Allow order placement with manual shipping settings
-
----
-
-### Security Considerations
-
-- The `shiprocket-rates` endpoint is **public** (no JWT verification needed)
-- Only reads `pickup_postcode`, `default_weight`, and `token` from DB
-- Token is never exposed to frontend - only used server-side
-- Rate limiting should be considered for production
+```typescript
+// Cleanup expired entries every 5 minutes
+setInterval(() => {
+  const now = Date.now();
+  for (const [ip, record] of rateLimitStore.entries()) {
+    if (now > record.resetAt) {
+      rateLimitStore.delete(ip);
+    }
+  }
+}, 5 * 60 * 1000);
+```
 
 ---
 
 ### User Experience
 
-**Before entering pincode:**
-```text
-Shipping: Enter pincode for estimate
-```
-
-**While loading:**
-```text
-Shipping: Calculating...
-```
-
-**After rates fetched:**
-```text
-Shipping (via Delhivery): ₹65
-Est. delivery: 4-6 days
-```
-
-**If not serviceable:**
-```text
-Shipping: Not available to this area
-[Contact seller for alternatives]
-```
+| Scenario | User Experience |
+|----------|-----------------|
+| Normal usage | No change - rates load instantly |
+| Rapid checking (>10/min) | "Too many requests. Please wait a moment." |
+| After waiting 60s | Normal operation resumes |
 
 ---
 
 ### Technical Summary
 
-1. **New Edge Function** (`shiprocket-rates`) handles Shiprocket API calls server-side
-2. **New Hook** (`useShippingRates`) provides React Query integration with caching
-3. **Checkout Form** reports postal code changes to parent
-4. **Order Summary** displays live rates with loading states
-5. **Cart Page** orchestrates the flow with proper fallbacks
+1. **Rate Limiter**: IP-based, 10 requests per minute per IP
+2. **Storage**: In-memory Map (edge function scope)
+3. **Response**: 429 status with `Retry-After: 60` header
+4. **Frontend**: Graceful handling with user-friendly message
+5. **Cleanup**: Periodic removal of expired entries
 
-This provides customers with accurate, real-time shipping costs while maintaining graceful degradation when Shiprocket isn't configured.
+This protects the Shiprocket API from abuse while ensuring legitimate customers have a smooth checkout experience.
 
