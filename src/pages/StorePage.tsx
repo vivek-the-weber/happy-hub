@@ -1,13 +1,14 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
-import { MessageCircle, Truck, Package } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { StoreHeader } from '@/components/StoreHeader';
 import { ProductCard } from '@/components/ProductCard';
 import { ProductDetailModal } from '@/components/ProductDetailModal';
+import { CollectionTabs } from '@/components/store/CollectionTabs';
+import { StoreFooter } from '@/components/store/StoreFooter';
+import { WhatsAppBar } from '@/components/store/WhatsAppBar';
+import { ThemeToggle } from '@/components/store/ThemeToggle';
 import { useStoreBySlug, useStoreProducts, Product } from '@/hooks/useStore';
-import { formatPrice } from '@/lib/currency';
+import { useStoreCollections, useCollectionProducts } from '@/hooks/useCollections';
 
 interface StorePageProps {
   subdomainSlug?: string;
@@ -18,9 +19,14 @@ export default function StorePage({ subdomainSlug }: StorePageProps) {
   const slug = subdomainSlug || pathSlug || '';
   const { data: store, isLoading: storeLoading } = useStoreBySlug(slug);
   const { data: products, isLoading: productsLoading } = useStoreProducts(store?.id);
+  const { data: collections } = useStoreCollections(store?.id);
   
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
+  const [selectedCollectionId, setSelectedCollectionId] = useState<string | null>(null);
+
+  // Get product IDs for the selected collection
+  const { data: collectionProductIds } = useCollectionProducts(selectedCollectionId || undefined);
 
   // Update page title to store name
   useEffect(() => {
@@ -38,12 +44,23 @@ export default function StorePage({ subdomainSlug }: StorePageProps) {
     setModalOpen(true);
   };
 
+  // Filter products based on selected collection
+  const filteredProducts = useMemo(() => {
+    const availableProducts = products?.filter(p => p.is_available) || [];
+    
+    if (!selectedCollectionId || !collectionProductIds) {
+      return availableProducts;
+    }
+    
+    return availableProducts.filter(p => collectionProductIds.includes(p.id));
+  }, [products, selectedCollectionId, collectionProductIds]);
+
   if (storeLoading) {
     return (
-      <div className="min-h-screen bg-background">
-        <header className="sticky top-0 z-50 bg-background/95 backdrop-blur border-b">
-          <div className="container flex items-center h-14">
-            <span className="text-muted-foreground">Loading store...</span>
+      <div className="min-h-screen bg-black">
+        <header className="sticky top-0 z-50 bg-black">
+          <div className="container flex items-center h-14 px-4">
+            <span className="text-neutral-500">Loading store...</span>
           </div>
         </header>
       </div>
@@ -52,107 +69,76 @@ export default function StorePage({ subdomainSlug }: StorePageProps) {
 
   if (!store) {
     return (
-      <div className="min-h-screen bg-background">
-        <header className="sticky top-0 z-50 bg-background/95 backdrop-blur border-b">
-          <div className="container flex items-center h-14">
-            <span className="text-lg font-bold">Store not found</span>
+      <div className="min-h-screen bg-black">
+        <header className="sticky top-0 z-50 bg-black">
+          <div className="container flex items-center h-14 px-4">
+            <span className="text-lg font-bold text-white">Store not found</span>
           </div>
         </header>
-        <div className="container py-16 text-center">
-          <h1 className="text-2xl font-bold mb-2">Store not found</h1>
-          <p className="text-muted-foreground">This store doesn't exist or has been removed.</p>
+        <div className="container py-16 text-center px-4">
+          <h1 className="text-2xl font-bold mb-2 text-white">Store not found</h1>
+          <p className="text-neutral-500">This store doesn't exist or has been removed.</p>
         </div>
       </div>
     );
   }
 
-  const availableProducts = products?.filter(p => p.is_available) || [];
-
-  const handleWhatsAppContact = () => {
-    if (store.whatsapp_number) {
-      const message = encodeURIComponent(`Hi! I'm interested in your products from ${store.name}`);
-      window.open(`https://wa.me/${store.whatsapp_number.replace(/\D/g, '')}?text=${message}`, '_blank');
-    }
-  };
-
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-black pb-24">
       <StoreHeader store={store} />
       
-      {/* Store Header */}
-      <section className="container py-8 border-b">
-        <div className="max-w-2xl">
-          <h1 className="text-3xl font-bold mb-2">{store.name}</h1>
-          {store.bio && (
-            <p className="text-muted-foreground mb-4">{store.bio}</p>
-          )}
-          {store.whatsapp_number && (
-            <Button variant="outline" size="sm" onClick={handleWhatsAppContact}>
-              <MessageCircle className="h-4 w-4 mr-2" />
-              Contact on WhatsApp
-            </Button>
-          )}
-          
-          {/* Shipping Info */}
-          {(store.free_shipping || store.shipping_charge || store.estimated_delivery_time) && (
-            <div className="flex flex-wrap gap-2 mt-4">
-              {store.free_shipping ? (
-                <Badge variant="secondary" className="gap-1">
-                  <Truck className="h-3 w-3" />
-                  Free Shipping
-                </Badge>
-              ) : store.shipping_charge ? (
-                <Badge variant="secondary" className="gap-1">
-                  <Truck className="h-3 w-3" />
-                  {formatPrice(store.shipping_charge, store.country)} shipping
-                </Badge>
-              ) : null}
-              
-              {store.estimated_delivery_time && (
-                <Badge variant="outline" className="gap-1">
-                  <Package className="h-3 w-3" />
-                  Delivers in {store.estimated_delivery_time}
-                </Badge>
-              )}
-            </div>
-          )}
-        </div>
-      </section>
+      {/* Collection Tabs */}
+      {collections && collections.length > 0 && (
+        <CollectionTabs
+          collections={collections}
+          selectedId={selectedCollectionId}
+          onSelect={setSelectedCollectionId}
+        />
+      )}
 
       {/* Products */}
-      <section className="container py-8">
+      <section className="px-4 py-6">
         {productsLoading ? (
-          <div className="text-center text-muted-foreground py-8">
+          <div className="text-center text-neutral-500 py-8">
             Loading products...
           </div>
-        ) : availableProducts.length === 0 ? (
+        ) : filteredProducts.length === 0 ? (
           <div className="text-center py-16">
-            <p className="text-muted-foreground">No products available yet.</p>
+            <p className="text-neutral-500">No products available yet.</p>
           </div>
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {availableProducts.map((product) => (
-                  <ProductCard
-                    key={product.id}
-                    product={product}
-                    storeName={store.name}
-                    storeId={store.id}
-                    storeCountry={store.country}
-                    onClick={() => handleProductClick(product)}
-                  />
+            {filteredProducts.map((product) => (
+              <ProductCard
+                key={product.id}
+                product={product}
+                storeName={store.name}
+                storeId={store.id}
+                storeCountry={store.country}
+                onClick={() => handleProductClick(product)}
+              />
             ))}
           </div>
         )}
       </section>
 
-        <ProductDetailModal
-          product={selectedProduct}
-          storeName={store.name}
-          storeId={store.id}
-          storeCountry={store.country}
-          open={modalOpen}
-          onOpenChange={setModalOpen}
-        />
+      {/* Store Footer */}
+      <StoreFooter storeName={store.name} />
+
+      {/* Fixed WhatsApp Bar */}
+      <WhatsAppBar whatsappNumber={store.whatsapp_number} storeName={store.name} />
+
+      {/* Theme Toggle */}
+      <ThemeToggle />
+
+      <ProductDetailModal
+        product={selectedProduct}
+        storeName={store.name}
+        storeId={store.id}
+        storeCountry={store.country}
+        open={modalOpen}
+        onOpenChange={setModalOpen}
+      />
     </div>
   );
 }
