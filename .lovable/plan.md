@@ -1,167 +1,136 @@
 
-## Fix: Shipping Rates Query Not Triggering After Postal Code Entry
+## Automatic Shiprocket Token Refresh
 
-### Problem Analysis
+### Problem
+Shiprocket API tokens expire after a certain period. Currently, when a token expires:
+1. The `shiprocket-rates` edge function detects the 401 error
+2. It returns `tokenExpired: true` to the frontend
+3. The UI shows "Shipping rates unavailable" and falls back to manual shipping
+4. The seller must manually reconnect their Shiprocket account in the dashboard
 
-From your screenshot, I can see:
-1. The `handlePostalCodeChange` callback IS firing correctly for each keystroke (4, 41, 411, 4110, 41106, 411061)
-2. The Shiprocket connection query runs and returns valid data (pickup_postcode: 411061)
-3. BUT the `shiprocket-rates` edge function is **NEVER CALLED** (no network request)
+This creates a poor experience for both sellers (who may not realize their connection is broken) and customers (who don't get accurate shipping rates).
 
-This means the `useShippingRates` React Query hook is not triggering despite having valid inputs.
+### Solution: Backend Token Refresh with Stored Credentials
 
-### Root Cause
-
-The issue is a **stale closure problem**. The `useShippingRates` hook is called at the top of the component, but the `customerPostalCode` state is only being logged inside the callback. The state update isn't causing the component to re-render with the new postal code value being passed to the hook.
-
-Looking at the component structure:
+Since Shiprocket doesn't provide refresh tokens, we need to store the seller's email for re-authentication. We'll implement a proactive token refresh mechanism.
 
 ```text
-Cart Component renders
-         |
-         v
-useShippingRates(firstStoreId, customerPostalCode, weight)
-         |
-         v
-customerPostalCode = '' (initial state)
-         |
-         v
-enabled: '' === '' && ''.length >= 6  →  FALSE (query doesn't run)
-         |
-         v
-User types postal code → handlePostalCodeChange called
-         |
-         v
-setCustomerPostalCode('411061') → triggers re-render
-         |
-         v
-NEW RENDER: useShippingRates should see '411061'
-         |
-         v
-enabled: !!storeId && '411061'.length >= 6 → TRUE
-         |
-         v
-Query SHOULD run... but doesn't?
+┌─────────────────────────────────────────────────────────────────────┐
+│                    Token Refresh Architecture                       │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│  shiprocket-rates (detects 401)                                     │
+│           │                                                         │
+│           ▼                                                         │
+│  ┌────────────────────┐                                             │
+│  │ Return tokenExpired │                                            │
+│  │ + trigger refresh   │                                            │
+│  └────────────────────┘                                             │
+│           │                                                         │
+│           ▼                                                         │
+│  shiprocket-auth (action: 'refresh-token')                          │
+│           │                                                         │
+│           ▼                                                         │
+│  ┌────────────────────┐     ┌─────────────────────────────┐         │
+│  │ Try re-login with  │────▶│ Success: Update token in DB │         │
+│  │ stored email       │     │ Retry original request      │         │
+│  └────────────────────┘     └─────────────────────────────┘         │
+│           │                                                         │
+│           ▼ (if no stored password)                                 │
+│  ┌────────────────────┐                                             │
+│  │ Mark as expired    │                                             │
+│  │ Notify seller      │                                             │
+│  └────────────────────┘                                             │
+│                                                                     │
+└─────────────────────────────────────────────────────────────────────┘
 ```
 
-The only explanation is that **React is not re-rendering the checkout section** when `customerPostalCode` changes, OR the query key isn't updating properly.
+### Implementation Approach
 
-### Solution: Add Debug Logging and Fix the Query Trigger
+Since Shiprocket doesn't provide refresh tokens (they use simple JWT that expires), and we **intentionally don't store passwords** for security, we'll implement:
 
-#### Step 1: Add Comprehensive Debug Logging in Cart.tsx
-
-Add logging to trace the exact flow of data:
-
-```typescript
-// At the top of the checkout render section
-console.log('[Cart] Render with:', {
-  customerPostalCode,
-  firstStoreId,
-  shiprocketStatus,
-  isLoadingShiprocketStatus,
-});
-
-// Log the query state
-console.log('[Cart] useShippingRates state:', {
-  liveRates,
-  isLoadingRates,
-  ratesError,
-  enabled: !!firstStoreId && !!customerPostalCode && customerPostalCode.length >= 6,
-});
-```
-
-#### Step 2: Fix Potential Query Key Issue
-
-The `useShippingRates` hook uses this query key:
-```typescript
-queryKey: ['shipping-rates', storeId, deliveryPostcode, weight],
-```
-
-But `weight` depends on `shiprocketStatus?.defaultWeight`, which might be undefined during initial renders, causing the query key to change unexpectedly.
-
-**Fix:** Stabilize the weight value:
-
-```typescript
-// In Cart.tsx
-const defaultWeight = shiprocketStatus?.defaultWeight ?? 0.5;
-
-const { 
-  data: liveRates, 
-  isLoading: isLoadingRates,
-  error: ratesError,
-} = useShippingRates(
-  firstStoreId,
-  customerPostalCode,
-  defaultWeight
-);
-```
-
-#### Step 3: Add Explicit State Logging in Hook
-
-Add logging inside `useShippingRates` to see exactly what it receives:
-
-```typescript
-export function useShippingRates(
-  storeId: string | undefined,
-  deliveryPostcode: string | undefined,
-  weight: number = 0.5
-) {
-  console.log('[useShippingRates] Called with:', { storeId, deliveryPostcode, weight });
-  console.log('[useShippingRates] Enabled:', !!storeId && !!deliveryPostcode && deliveryPostcode.length >= 6);
-  
-  return useQuery({
-    // ... rest of query
-  });
-}
-```
+1. **Token Expiry Detection**: Already in place
+2. **Automatic Retry with Fresh Token**: The rates function will attempt one token refresh before failing
+3. **Seller Notification System**: Alert sellers when their token is about to expire or has expired
+4. **Frontend Auto-Retry**: When `tokenExpired` is detected, automatically trigger a reconnection prompt
 
 ---
 
-### Files to Modify
+### Technical Changes
+
+#### 1. Database Schema Update
+Add a `token_expires_at` column to track token validity:
+
+```sql
+ALTER TABLE public.shiprocket_connections 
+ADD COLUMN token_expires_at timestamptz;
+```
+
+#### 2. Update shiprocket-auth Edge Function
+- Add new action: `validate-token` to check if token is valid
+- Store token expiry time when connecting (Shiprocket tokens typically expire in 10 days)
+- Update the `connect` action to calculate and store expiry
+
+#### 3. Update shiprocket-rates Edge Function
+- Before making the API call, check if `token_expires_at` is past
+- If token is expired or about to expire (within 1 day), return `tokenExpired: true` immediately
+- Add internal retry mechanism: if 401 received, mark token as expired and return error
+
+#### 4. Add Frontend Hook for Token Refresh
+Create a new hook `useRefreshShiprocketToken` that:
+- Listens for `tokenExpired` in shipping rates response
+- Triggers a reconnection modal or notification to the seller
+- Invalidates cached shipping status queries
+
+#### 5. Update ShippingSettings Component
+- Show a warning badge when token is about to expire
+- Add a "Refresh Connection" button that re-opens the credentials modal
+
+#### 6. Update Checkout Flow
+- When `tokenExpired` is detected, show a graceful message
+- Continue with manual shipping fallback seamlessly
+
+---
+
+### Files to Create/Modify
 
 | File | Changes |
 |------|---------|
-| `src/pages/Cart.tsx` | Add debug logging, stabilize weight value |
-| `src/hooks/useShippingRates.tsx` | Add debug logging to trace query triggering |
+| `supabase/migrations/` | Add `token_expires_at` column |
+| `supabase/functions/shiprocket-auth/index.ts` | Add token expiry tracking, add `validate-token` action |
+| `supabase/functions/shiprocket-rates/index.ts` | Check token expiry before API call |
+| `src/hooks/useShiprocket.tsx` | Add `useRefreshShiprocketToken` hook |
+| `src/components/dashboard/ShippingSettings.tsx` | Show token expiry warning, add refresh button |
+| `src/integrations/supabase/types.ts` | Auto-updated with new column |
 
 ---
 
-### Expected Outcome
+### Security Considerations
 
-After these changes:
-1. Console will show exactly what values are being passed to the query
-2. We can identify if the query is being enabled but not firing, or if it's disabled
-3. Once the root cause is confirmed, we can apply the specific fix
+1. **No Password Storage**: We will NOT store Shiprocket passwords. When token expires, seller must re-enter credentials
+2. **Token Expiry Tracking**: Shiprocket tokens expire in ~10 days. We'll track this proactively
+3. **Graceful Degradation**: If token is expired, fallback to manual shipping without breaking checkout
 
 ---
 
-### Most Likely Fix (Based on Pattern Analysis)
+### User Experience
 
-The most probable cause is that the component isn't re-rendering the checkout UI when `customerPostalCode` changes because the derived values are computed inside the `if (isCheckout)` block.
+**For Sellers:**
+- Dashboard shows connection status with expiry countdown
+- Warning notification 2 days before token expires
+- One-click reconnection flow
 
-**Alternative Fix:** Move the derived state calculations outside the conditional rendering:
-
-```typescript
-// Move OUTSIDE the if (isCheckout) block
-const shiprocketEnabled = shiprocketStatus?.hasShiprocket && !!shiprocketStatus?.pickupPostcode;
-const hasEnteredPostcode = customerPostalCode.length >= 6;
-const shippingError = getShippingError();
-const liveShippingRate = getLiveShippingRate();
-
-if (isCheckout) {
-  // Use the already-computed values
-  return ( ... );
-}
-```
-
-This ensures these values are recomputed on every render, not just inside the checkout branch.
+**For Customers:**
+- Seamless checkout with live rates when token is valid
+- Automatic fallback to manual shipping if rates unavailable
+- No error messages about "token expired" (internal detail)
 
 ---
 
 ### Summary
 
-1. **Root cause**: State update in `customerPostalCode` may not be causing proper re-render propagation to the query hook
-2. **Debug first**: Add comprehensive logging to trace data flow
-3. **Primary fix**: Move derived state calculations outside conditional blocks
-4. **Secondary fix**: Stabilize the weight value to prevent query key instability
-5. **Verification**: Console logs will show if query is enabled and when it fires
+This implementation adds proactive token expiry tracking and graceful handling:
+1. Track when tokens will expire in the database
+2. Warn sellers before expiry
+3. Provide easy reconnection flow
+4. Fall back to manual shipping seamlessly for customers
