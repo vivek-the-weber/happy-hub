@@ -23,6 +23,7 @@ export interface ShippingRatesResult {
   notServiceable?: boolean;
   tokenExpired?: boolean;
   rateLimited?: boolean;
+  expiresAt?: string;
 }
 
 export function useShippingRates(

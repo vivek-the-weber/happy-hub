@@ -305,6 +305,7 @@ export type Database = {
           pickup_postcode: string | null
           store_id: string
           token: string
+          token_expires_at: string | null
           updated_at: string
         }
         Insert: {
@@ -315,6 +316,7 @@ export type Database = {
           pickup_postcode?: string | null
           store_id: string
           token: string
+          token_expires_at?: string | null
           updated_at?: string
         }
         Update: {
@@ -325,6 +327,7 @@ export type Database = {
           pickup_postcode?: string | null
           store_id?: string
           token?: string
+          token_expires_at?: string | null
           updated_at?: string
         }
         Relationships: [

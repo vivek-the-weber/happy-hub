@@ -72,6 +72,17 @@ interface CourierCompany {
   rate: number;
 }
 
+// Check if token is expired or about to expire (within 1 day)
+function isTokenExpiredOrExpiring(tokenExpiresAt: string | null): boolean {
+  if (!tokenExpiresAt) return false; // If no expiry set, assume valid
+  
+  const expiresAt = new Date(tokenExpiresAt);
+  const now = new Date();
+  const oneDayFromNow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+  
+  return expiresAt <= oneDayFromNow;
+}
+
 Deno.serve(async (req) => {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
@@ -123,10 +134,10 @@ Deno.serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Fetch Shiprocket connection for this store
+    // Fetch Shiprocket connection for this store (include token_expires_at)
     const { data: connection, error: connError } = await supabase
       .from('shiprocket_connections')
-      .select('token, pickup_postcode, default_weight')
+      .select('token, pickup_postcode, default_weight, token_expires_at')
       .eq('store_id', storeId)
       .maybeSingle();
 
@@ -150,6 +161,19 @@ Deno.serve(async (req) => {
       console.log('No pickup postcode configured');
       return new Response(
         JSON.stringify({ error: 'Pickup postcode not configured', notConfigured: true }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Proactive token expiry check - if token is expired or expiring within 1 day
+    if (isTokenExpiredOrExpiring(connection.token_expires_at)) {
+      console.log('Token is expired or expiring soon:', connection.token_expires_at);
+      return new Response(
+        JSON.stringify({ 
+          error: 'Shiprocket token has expired. Seller needs to reconnect.', 
+          tokenExpired: true,
+          expiresAt: connection.token_expires_at,
+        }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -180,8 +204,14 @@ Deno.serve(async (req) => {
       const errorText = await shiprocketResponse.text();
       console.error('Shiprocket API error:', shiprocketResponse.status, errorText);
       
-      // Handle token expiry
+      // Handle token expiry - update the expiry in DB and return tokenExpired
       if (shiprocketResponse.status === 401) {
+        // Mark token as expired in database
+        await supabase
+          .from('shiprocket_connections')
+          .update({ token_expires_at: new Date().toISOString() })
+          .eq('store_id', storeId);
+        
         return new Response(
           JSON.stringify({ error: 'Shiprocket token expired. Seller needs to reconnect.', tokenExpired: true }),
           { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
