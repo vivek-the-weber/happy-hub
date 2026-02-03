@@ -1,9 +1,5 @@
-import { Plus } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
-import { useCart } from '@/hooks/useCart';
+import { ImageIcon } from 'lucide-react';
 import { Product } from '@/hooks/useStore';
-import { toast } from 'sonner';
 import { formatPrice } from '@/lib/currency';
 
 interface ProductCardProps {
@@ -14,35 +10,20 @@ interface ProductCardProps {
   onClick?: () => void;
 }
 
-export function ProductCard({ product, storeName, storeId, storeCountry, onClick }: ProductCardProps) {
-  const { addToCart } = useCart();
-
+export function ProductCard({ product, storeCountry, onClick }: ProductCardProps) {
   // Use first image from image_urls array, fallback to image_url for backward compatibility
   const displayImage = product.image_urls?.[0] || product.image_url;
   const imageCount = product.image_urls?.length || (product.image_url ? 1 : 0);
 
-  const handleAddToCart = () => {
-    addToCart({
-      productId: product.id,
-      productName: product.name,
-      productPrice: product.price,
-      productImage: displayImage || null,
-      storeId: storeId,
-      storeName,
-      storeCountry,
-    });
-    toast.success('Added to cart!');
-  };
-
   return (
-    <Card className="overflow-hidden group cursor-pointer" onClick={onClick}>
-      <div className="aspect-square bg-muted relative">
+    <div className="cursor-pointer group" onClick={onClick}>
+      <div className="aspect-square rounded-2xl overflow-hidden bg-neutral-800 relative">
         {displayImage ? (
           <>
             <img
               src={displayImage}
               alt={product.name}
-              className="w-full h-full object-cover"
+              className="w-full h-full object-cover transition-transform group-hover:scale-105"
             />
             {imageCount > 1 && (
               <div className="absolute bottom-2 right-2 bg-black/60 text-white text-xs px-2 py-1 rounded-full">
@@ -51,34 +32,21 @@ export function ProductCard({ product, storeName, storeId, storeCountry, onClick
             )}
           </>
         ) : (
-          <div className="w-full h-full flex items-center justify-center text-muted-foreground">
-            No image
+          <div className="w-full h-full flex flex-col items-center justify-center text-neutral-500">
+            <ImageIcon className="h-8 w-8 mb-2" />
+            <span className="text-xs uppercase tracking-wider">Coming Soon</span>
           </div>
         )}
         {!product.is_available && (
-          <div className="absolute inset-0 bg-background/80 flex items-center justify-center">
-            <span className="text-sm font-medium">Sold out</span>
+          <div className="absolute inset-0 bg-black/80 flex items-center justify-center">
+            <span className="text-sm font-medium text-white">Sold out</span>
           </div>
         )}
       </div>
-      <div className="p-4">
-        <h3 className="font-medium text-sm line-clamp-2 mb-1">{product.name}</h3>
-        <p className="text-lg font-semibold text-primary mb-3">
-          {formatPrice(product.price, storeCountry)}
-        </p>
-        <Button 
-          onClick={(e) => {
-            e.stopPropagation();
-            handleAddToCart();
-          }} 
-          disabled={!product.is_available}
-          className="w-full"
-          size="sm"
-        >
-          <Plus className="h-4 w-4 mr-1" />
-          Add to cart
-        </Button>
-      </div>
-    </Card>
+      <h3 className="text-white text-sm mt-3 line-clamp-1 font-medium">{product.name}</h3>
+      <p className="text-primary font-semibold">
+        {formatPrice(product.price, storeCountry)}
+      </p>
+    </div>
   );
 }

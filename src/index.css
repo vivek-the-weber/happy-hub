@@ -109,3 +109,18 @@
     display: none;
   }
 }
+
+/* Store theme overrides */
+body.store-light {
+  --store-bg: 0 0% 100%;
+  --store-text: 0 0% 0%;
+  --store-muted: 0 0% 40%;
+  --store-card: 0 0% 95%;
+}
+
+body.store-dark {
+  --store-bg: 0 0% 0%;
+  --store-text: 0 0% 100%;
+  --store-muted: 0 0% 50%;
+  --store-card: 0 0% 15%;
+}
