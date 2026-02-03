@@ -1,136 +1,207 @@
 
-## Automatic Shiprocket Token Refresh
 
-### Problem
-Shiprocket API tokens expire after a certain period. Currently, when a token expires:
-1. The `shiprocket-rates` edge function detects the 401 error
-2. It returns `tokenExpired: true` to the frontend
-3. The UI shows "Shipping rates unavailable" and falls back to manual shipping
-4. The seller must manually reconnect their Shiprocket account in the dashboard
+## Replicate Dark Store Design
 
-This creates a poor experience for both sellers (who may not realize their connection is broken) and customers (who don't get accurate shipping rates).
+### Reference Design Analysis
+Based on the uploaded image, the target design has these key characteristics:
 
-### Solution: Backend Token Refresh with Stored Credentials
-
-Since Shiprocket doesn't provide refresh tokens, we need to store the seller's email for re-authentication. We'll implement a proactive token refresh mechanism.
-
-```text
-┌─────────────────────────────────────────────────────────────────────┐
-│                    Token Refresh Architecture                       │
-├─────────────────────────────────────────────────────────────────────┤
-│                                                                     │
-│  shiprocket-rates (detects 401)                                     │
-│           │                                                         │
-│           ▼                                                         │
-│  ┌────────────────────┐                                             │
-│  │ Return tokenExpired │                                            │
-│  │ + trigger refresh   │                                            │
-│  └────────────────────┘                                             │
-│           │                                                         │
-│           ▼                                                         │
-│  shiprocket-auth (action: 'refresh-token')                          │
-│           │                                                         │
-│           ▼                                                         │
-│  ┌────────────────────┐     ┌─────────────────────────────┐         │
-│  │ Try re-login with  │────▶│ Success: Update token in DB │         │
-│  │ stored email       │     │ Retry original request      │         │
-│  └────────────────────┘     └─────────────────────────────┘         │
-│           │                                                         │
-│           ▼ (if no stored password)                                 │
-│  ┌────────────────────┐                                             │
-│  │ Mark as expired    │                                             │
-│  │ Notify seller      │                                             │
-│  └────────────────────┘                                             │
-│                                                                     │
-└─────────────────────────────────────────────────────────────────────┘
-```
-
-### Implementation Approach
-
-Since Shiprocket doesn't provide refresh tokens (they use simple JWT that expires), and we **intentionally don't store passwords** for security, we'll implement:
-
-1. **Token Expiry Detection**: Already in place
-2. **Automatic Retry with Fresh Token**: The rates function will attempt one token refresh before failing
-3. **Seller Notification System**: Alert sellers when their token is about to expire or has expired
-4. **Frontend Auto-Retry**: When `tokenExpired` is detected, automatically trigger a reconnection prompt
-
----
+1. **Dark Theme**: Pure black background (#000) for the entire store page
+2. **Minimal Header**: Store name on left, cart icon with badge on right (no avatar)
+3. **Collection Tabs**: Horizontal scrolling tabs (All, T-shirts, Shirts, etc.) for filtering products
+4. **Clean Product Cards**:
+   - Square images with rounded corners (no Card border/shadow)
+   - Dark gray placeholder for products without images (says "COMING SOON")
+   - Product name below image (white text)
+   - Price in green below name
+   - **No "Add to cart" button** visible on cards (tapping opens detail modal)
+5. **Fixed Bottom Bar**: WhatsApp contact button
+6. **Store Footer**: Store name with copyright year
+7. **Theme Toggle**: Floating button in bottom-right corner
 
 ### Technical Changes
 
-#### 1. Database Schema Update
-Add a `token_expires_at` column to track token validity:
+---
 
-```sql
-ALTER TABLE public.shiprocket_connections 
-ADD COLUMN token_expires_at timestamptz;
+#### 1. Store Page Layout (`src/pages/StorePage.tsx`)
+
+**Changes:**
+- Add forced dark theme class to store pages
+- Remove the current "Store Header" section with bio/badges
+- Add horizontal collection tabs for filtering
+- Add fixed bottom bar with WhatsApp button
+- Add store-specific footer with store name
+- Add floating theme toggle button
+
+**New layout structure:**
 ```
-
-#### 2. Update shiprocket-auth Edge Function
-- Add new action: `validate-token` to check if token is valid
-- Store token expiry time when connecting (Shiprocket tokens typically expire in 10 days)
-- Update the `connect` action to calculate and store expiry
-
-#### 3. Update shiprocket-rates Edge Function
-- Before making the API call, check if `token_expires_at` is past
-- If token is expired or about to expire (within 1 day), return `tokenExpired: true` immediately
-- Add internal retry mechanism: if 401 received, mark token as expired and return error
-
-#### 4. Add Frontend Hook for Token Refresh
-Create a new hook `useRefreshShiprocketToken` that:
-- Listens for `tokenExpired` in shipping rates response
-- Triggers a reconnection modal or notification to the seller
-- Invalidates cached shipping status queries
-
-#### 5. Update ShippingSettings Component
-- Show a warning badge when token is about to expire
-- Add a "Refresh Connection" button that re-opens the credentials modal
-
-#### 6. Update Checkout Flow
-- When `tokenExpired` is detected, show a graceful message
-- Continue with manual shipping fallback seamlessly
+┌─────────────────────────────────────┐
+│ Store Name              🛒 (badge)  │  ← Minimal header
+├─────────────────────────────────────┤
+│ [All] [T-shirts] [Shirts] [...]     │  ← Scrollable collection tabs
+├─────────────────────────────────────┤
+│  ┌───────┐  ┌───────┐               │
+│  │       │  │       │               │
+│  │ Image │  │ Image │               │
+│  │       │  │       │               │
+│  └───────┘  └───────┘               │
+│  Name       Name                    │
+│  ₹Price     ₹Price                  │  ← Product grid
+│                                     │
+│  ┌───────┐  ┌───────┐               │
+│  │       │  │       │               │
+│  ... more products ...              │
+├─────────────────────────────────────┤
+│ © STORE NAME 2026                   │  ← Store footer
+├─────────────────────────────────────┤
+│   [📱 Contact on WhatsApp]          │  ← Fixed bottom bar
+└─────────────────────────────────────┘
+                               [☀️]    ← Theme toggle (floating)
+```
 
 ---
 
-### Files to Create/Modify
+#### 2. Store Header Update (`src/components/StoreHeader.tsx`)
+
+**Changes:**
+- Remove the avatar/logo circle
+- Keep just the store name text and cart icon
+- Apply dark theme styling (black background, white text)
+- Remove `border-b` for cleaner look
+
+---
+
+#### 3. Product Card Redesign (`src/components/ProductCard.tsx`)
+
+**Current:**
+- Card with shadow/border
+- "Add to cart" button visible
+- "No image" text placeholder
+
+**New Design:**
+- No Card wrapper (just the content)
+- Image with rounded corners directly
+- Dark gray placeholder with "COMING SOON" text and icon
+- Product name and price only (no button)
+- Clicking anywhere opens detail modal
+
+---
+
+#### 4. New Component: Collection Tabs (`src/components/store/CollectionTabs.tsx`)
+
+**Purpose:** Horizontal scrolling tabs to filter products by collection
+
+**Features:**
+- "All" tab always first (shows all products)
+- Other tabs from visible collections
+- Active tab has different styling
+- Smooth horizontal scroll on mobile
+- Filter products based on selected collection
+
+---
+
+#### 5. New Component: Store Footer (`src/components/store/StoreFooter.tsx`)
+
+**Design:**
+- Store name in uppercase with copyright year
+- Muted gray text
+- Centered alignment
+
+---
+
+#### 6. New Component: Fixed WhatsApp Bar (`src/components/store/WhatsAppBar.tsx`)
+
+**Design:**
+- Fixed to bottom of screen
+- Black/dark background with padding
+- Full-width button with WhatsApp icon
+- Only shows if store has WhatsApp number configured
+
+---
+
+#### 7. Theme Toggle (Optional Enhancement)
+
+Add a floating theme toggle button in the bottom-right corner to let customers switch between dark and light modes.
+
+---
+
+### Files to Create
+
+| File | Purpose |
+|------|---------|
+| `src/components/store/CollectionTabs.tsx` | Horizontal scrollable collection filter tabs |
+| `src/components/store/StoreFooter.tsx` | Store-specific footer with copyright |
+| `src/components/store/WhatsAppBar.tsx` | Fixed bottom WhatsApp contact button |
+| `src/components/store/ThemeToggle.tsx` | Floating theme toggle button |
+
+### Files to Modify
 
 | File | Changes |
 |------|---------|
-| `supabase/migrations/` | Add `token_expires_at` column |
-| `supabase/functions/shiprocket-auth/index.ts` | Add token expiry tracking, add `validate-token` action |
-| `supabase/functions/shiprocket-rates/index.ts` | Check token expiry before API call |
-| `src/hooks/useShiprocket.tsx` | Add `useRefreshShiprocketToken` hook |
-| `src/components/dashboard/ShippingSettings.tsx` | Show token expiry warning, add refresh button |
-| `src/integrations/supabase/types.ts` | Auto-updated with new column |
+| `src/pages/StorePage.tsx` | Add dark theme, collection filtering, new layout |
+| `src/components/StoreHeader.tsx` | Remove avatar, simplify to name + cart only |
+| `src/components/ProductCard.tsx` | Remove Card wrapper, remove Add to Cart button, new placeholder |
+| `src/index.css` | Add store-specific dark theme class |
 
 ---
 
-### Security Considerations
+### Implementation Details
 
-1. **No Password Storage**: We will NOT store Shiprocket passwords. When token expires, seller must re-enter credentials
-2. **Token Expiry Tracking**: Shiprocket tokens expire in ~10 days. We'll track this proactively
-3. **Graceful Degradation**: If token is expired, fallback to manual shipping without breaking checkout
+#### Product Card New Design
 
----
+```tsx
+// Simplified structure (no Card wrapper)
+<div className="cursor-pointer" onClick={onClick}>
+  <div className="aspect-square rounded-2xl overflow-hidden bg-neutral-800">
+    {displayImage ? (
+      <img ... />
+    ) : (
+      <div className="flex flex-col items-center justify-center h-full text-neutral-500">
+        <ImageIcon className="h-8 w-8 mb-2" />
+        <span className="text-xs uppercase tracking-wider">Coming Soon</span>
+      </div>
+    )}
+  </div>
+  <h3 className="text-white text-sm mt-3 line-clamp-1">{product.name}</h3>
+  <p className="text-primary font-medium">₹{price}</p>
+</div>
+```
 
-### User Experience
+#### Collection Tabs Design
 
-**For Sellers:**
-- Dashboard shows connection status with expiry countdown
-- Warning notification 2 days before token expires
-- One-click reconnection flow
+```tsx
+<div className="flex gap-2 overflow-x-auto scrollbar-hide px-4 py-3">
+  <button 
+    className={cn(
+      "px-4 py-1.5 rounded-full text-sm whitespace-nowrap transition-colors",
+      active ? "bg-white text-black" : "text-white/70 hover:text-white"
+    )}
+  >
+    All
+  </button>
+  {collections.map(c => (
+    <button key={c.id} ...>{c.name}</button>
+  ))}
+</div>
+```
 
-**For Customers:**
-- Seamless checkout with live rates when token is valid
-- Automatic fallback to manual shipping if rates unavailable
-- No error messages about "token expired" (internal detail)
+#### Store Page Dark Theme
+
+The store pages will use a dedicated dark theme by applying specific classes:
+- `bg-black` or `bg-neutral-950` for pure black background
+- `text-white` for all text
+- Override card/muted colors for dark appearance
 
 ---
 
 ### Summary
 
-This implementation adds proactive token expiry tracking and graceful handling:
-1. Track when tokens will expire in the database
-2. Warn sellers before expiry
-3. Provide easy reconnection flow
-4. Fall back to manual shipping seamlessly for customers
+This redesign transforms the store pages to match the reference:
+1. **Dark minimal aesthetic** with pure black backgrounds
+2. **Cleaner product cards** without buttons (tap to view details)
+3. **Collection-based filtering** with horizontal tabs
+4. **Fixed WhatsApp bar** for easy contact
+5. **Store-branded footer** with copyright
+6. **Optional theme toggle** for user preference
+
+The changes maintain existing functionality (cart, product details modal) while updating the visual design to match the reference.
+
