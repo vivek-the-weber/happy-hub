@@ -1,11 +1,19 @@
 import { useState, useEffect } from 'react';
-import { Truck, Loader2, RefreshCw } from 'lucide-react';
+import { Truck, Loader2, RefreshCw, AlertTriangle } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { useUpdateStore, Store } from '@/hooks/useStore';
-import { useShiprocketConnection, useDisconnectShiprocket, useUpdateShiprocketConnection, useRefreshPickupLocation } from '@/hooks/useShiprocket';
+import { 
+  useShiprocketConnection, 
+  useDisconnectShiprocket, 
+  useUpdateShiprocketConnection, 
+  useRefreshPickupLocation,
+  isTokenExpiringSoon,
+  isTokenExpired,
+  getDaysUntilExpiry,
+} from '@/hooks/useShiprocket';
 import { ShiprocketConnectModal } from './ShiprocketConnectModal';
 import { toast } from 'sonner';
 import { getCurrencySymbol } from '@/lib/currency';
@@ -86,11 +94,24 @@ export function ShippingSettings({ store }: ShippingSettingsProps) {
       await refreshPickupLocation.mutateAsync({ storeId: store.id });
       toast.success('Pickup location synced from Shiprocket');
     } catch (error: any) {
-      toast.error(error.message || 'Failed to refresh pickup location');
+      // Check if token expired during refresh
+      if (error.message?.includes('Token may be expired') || error.message?.includes('reconnect')) {
+        toast.error('Your Shiprocket session has expired. Please reconnect.');
+        setShiprocketModalOpen(true);
+      } else {
+        toast.error(error.message || 'Failed to refresh pickup location');
+      }
     }
   };
 
+  const handleReconnect = () => {
+    setShiprocketModalOpen(true);
+  };
+
   const isConnected = !!shiprocketConnection;
+  const tokenExpired = isConnected && isTokenExpired(shiprocketConnection.token_expires_at);
+  const tokenExpiringSoon = isConnected && !tokenExpired && isTokenExpiringSoon(shiprocketConnection.token_expires_at);
+  const daysUntilExpiry = isConnected ? getDaysUntilExpiry(shiprocketConnection.token_expires_at) : null;
 
   return (
     <div className="space-y-6 pb-24">
@@ -102,6 +123,46 @@ export function ShippingSettings({ store }: ShippingSettingsProps) {
         <h2 className="text-xl font-semibold text-background">Shipping</h2>
       </div>
 
+      {/* Token Expiry Warning Banner */}
+      {isConnected && (tokenExpired || tokenExpiringSoon) && (
+        <div className={`flex items-center gap-3 rounded-2xl border p-4 ${
+          tokenExpired 
+            ? 'border-red-500/30 bg-red-500/10' 
+            : 'border-yellow-500/30 bg-yellow-500/10'
+        }`}>
+          <AlertTriangle className={`h-5 w-5 flex-shrink-0 ${
+            tokenExpired ? 'text-red-400' : 'text-yellow-400'
+          }`} />
+          <div className="flex-1 space-y-1">
+            <p className={`text-sm font-medium ${
+              tokenExpired ? 'text-red-400' : 'text-yellow-400'
+            }`}>
+              {tokenExpired 
+                ? 'Shiprocket connection expired' 
+                : `Shiprocket connection expires in ${daysUntilExpiry} day${daysUntilExpiry === 1 ? '' : 's'}`
+              }
+            </p>
+            <p className="text-xs text-background/60">
+              {tokenExpired 
+                ? 'Your customers won\'t see live shipping rates. Please reconnect.'
+                : 'Reconnect soon to avoid interruption in live shipping rates.'
+              }
+            </p>
+          </div>
+          <Button
+            size="sm"
+            onClick={handleReconnect}
+            className={`h-8 rounded-lg ${
+              tokenExpired 
+                ? 'bg-red-500 hover:bg-red-600' 
+                : 'bg-yellow-500 hover:bg-yellow-600 text-black'
+            }`}
+          >
+            Reconnect
+          </Button>
+        </div>
+      )}
+
       {/* Shiprocket Automation Toggle */}
       <div className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/5 p-4">
         <div className="space-y-0.5">
@@ -112,8 +173,8 @@ export function ShippingSettings({ store }: ShippingSettingsProps) {
             Automate shipping with Shiprocket
           </p>
           {isConnected && shiprocketConnection.email && (
-            <p className="text-xs text-green-400 mt-1">
-              Connected as {shiprocketConnection.email}
+            <p className={`text-xs mt-1 ${tokenExpired ? 'text-red-400' : 'text-green-400'}`}>
+              {tokenExpired ? '⚠️ Expired - ' : '✓ '}Connected as {shiprocketConnection.email}
             </p>
           )}
         </div>
@@ -129,10 +190,19 @@ export function ShippingSettings({ store }: ShippingSettingsProps) {
       {isConnected && (
         <>
           <div className="flex items-center gap-2 pt-2">
-            <div className="w-2 h-2 rounded-full bg-green-500" />
+            <div className={`w-2 h-2 rounded-full ${tokenExpired ? 'bg-red-500' : 'bg-green-500'}`} />
             <span className="text-xs font-medium tracking-wider text-background/60 uppercase">
               Shiprocket Settings
             </span>
+            {daysUntilExpiry !== null && !tokenExpired && (
+              <span className={`text-xs px-2 py-0.5 rounded-full ${
+                tokenExpiringSoon 
+                  ? 'bg-yellow-500/20 text-yellow-400' 
+                  : 'bg-green-500/20 text-green-400'
+              }`}>
+                {daysUntilExpiry} days left
+              </span>
+            )}
           </div>
 
           <div className="space-y-4">
@@ -149,7 +219,7 @@ export function ShippingSettings({ store }: ShippingSettingsProps) {
                   type="button"
                   variant="outline"
                   onClick={handleRefreshPickup}
-                  disabled={refreshPickupLocation.isPending}
+                  disabled={refreshPickupLocation.isPending || tokenExpired}
                   className="h-12 rounded-xl border-white/10 text-background hover:bg-white/10"
                 >
                   {refreshPickupLocation.isPending ? (
@@ -159,8 +229,11 @@ export function ShippingSettings({ store }: ShippingSettingsProps) {
                   )}
                 </Button>
               </div>
-              <p className="text-xs text-green-400">
-                ✓ Synced from your Shiprocket account
+              <p className={`text-xs ${tokenExpired ? 'text-red-400' : 'text-green-400'}`}>
+                {tokenExpired 
+                  ? '⚠️ Token expired - reconnect to sync' 
+                  : '✓ Synced from your Shiprocket account'
+                }
               </p>
             </div>
 

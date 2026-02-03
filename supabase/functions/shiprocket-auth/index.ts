@@ -6,6 +6,16 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
+// Shiprocket tokens typically expire in 10 days
+const TOKEN_EXPIRY_DAYS = 10;
+
+// Calculate token expiry date
+function calculateTokenExpiry(): string {
+  const expiryDate = new Date();
+  expiryDate.setDate(expiryDate.getDate() + TOKEN_EXPIRY_DAYS);
+  return expiryDate.toISOString();
+}
+
 // Helper function to fetch pickup locations from Shiprocket
 async function fetchPickupLocations(token: string): Promise<{ postcode: string | null; locationName: string | null }> {
   try {
@@ -45,6 +55,25 @@ async function fetchPickupLocations(token: string): Promise<{ postcode: string |
   } catch (error) {
     console.error('Error fetching pickup locations:', error);
     return { postcode: null, locationName: null };
+  }
+}
+
+// Helper to validate token by making a simple API call
+async function validateToken(token: string): Promise<boolean> {
+  try {
+    const response = await fetch(
+      'https://apiv2.shiprocket.in/v1/external/settings/company/pickup',
+      {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+    return response.ok;
+  } catch {
+    return false;
   }
 }
 
@@ -137,7 +166,10 @@ serve(async (req) => {
       // Fetch pickup locations after successful authentication
       const { postcode: pickupPostcode } = await fetchPickupLocations(shiprocketData.token);
 
-      // Insert into shiprocket_connections table with auto-fetched postcode
+      // Calculate token expiry
+      const tokenExpiresAt = calculateTokenExpiry();
+
+      // Insert into shiprocket_connections table with auto-fetched postcode and expiry
       const { error: insertError } = await supabase
         .from('shiprocket_connections')
         .insert({
@@ -145,6 +177,7 @@ serve(async (req) => {
           email: email,
           token: shiprocketData.token,
           pickup_postcode: pickupPostcode,
+          token_expires_at: tokenExpiresAt,
         });
 
       if (insertError) {
@@ -157,6 +190,7 @@ serve(async (req) => {
               email: email,
               token: shiprocketData.token,
               pickup_postcode: pickupPostcode,
+              token_expires_at: tokenExpiresAt,
             })
             .eq('store_id', storeId);
 
@@ -176,12 +210,13 @@ serve(async (req) => {
         }
       }
 
-      console.log('Shiprocket connected successfully for store:', storeId, 'Pickup postcode:', pickupPostcode);
+      console.log('Shiprocket connected successfully for store:', storeId, 'Pickup postcode:', pickupPostcode, 'Expires at:', tokenExpiresAt);
       return new Response(
         JSON.stringify({ 
           success: true, 
           message: 'Connected to Shiprocket successfully',
           pickup_postcode: pickupPostcode,
+          token_expires_at: tokenExpiresAt,
         }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
@@ -283,7 +318,7 @@ serve(async (req) => {
 
       if (!pickupPostcode) {
         return new Response(
-          JSON.stringify({ error: 'No pickup location configured in Shiprocket. Token may be expired - try reconnecting.' }),
+          JSON.stringify({ error: 'No pickup location configured in Shiprocket. Token may be expired - try reconnecting.', tokenExpired: true }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
@@ -312,9 +347,86 @@ serve(async (req) => {
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
 
+    } else if (action === 'validate-token') {
+      // New action to validate if current token is still valid
+      if (!storeId) {
+        return new Response(
+          JSON.stringify({ error: 'Store ID is required' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Verify user owns this store
+      const { data: store, error: storeError } = await supabase
+        .from('stores')
+        .select('id, owner_id')
+        .eq('id', storeId)
+        .maybeSingle();
+
+      if (storeError || !store) {
+        return new Response(
+          JSON.stringify({ error: 'Store not found' }),
+          { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      if (store.owner_id !== userId) {
+        return new Response(
+          JSON.stringify({ error: 'You do not own this store' }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Get current Shiprocket connection
+      const { data: connection, error: connError } = await supabase
+        .from('shiprocket_connections')
+        .select('token, token_expires_at')
+        .eq('store_id', storeId)
+        .maybeSingle();
+
+      if (connError || !connection) {
+        return new Response(
+          JSON.stringify({ valid: false, error: 'No Shiprocket connection found' }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Check if token is past expiry date
+      const now = new Date();
+      const expiresAt = connection.token_expires_at ? new Date(connection.token_expires_at) : null;
+      
+      if (expiresAt && now > expiresAt) {
+        console.log('Token expired based on stored expiry date');
+        return new Response(
+          JSON.stringify({ valid: false, expired: true, expiresAt: connection.token_expires_at }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Actually validate by making an API call
+      const isValid = await validateToken(connection.token);
+      
+      if (!isValid) {
+        // Token is invalid, update expiry to now
+        await supabase
+          .from('shiprocket_connections')
+          .update({ token_expires_at: new Date().toISOString() })
+          .eq('store_id', storeId);
+      }
+
+      console.log('Token validation result for store:', storeId, 'Valid:', isValid);
+      return new Response(
+        JSON.stringify({ 
+          valid: isValid, 
+          expired: !isValid,
+          expiresAt: connection.token_expires_at,
+        }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+
     } else {
       return new Response(
-        JSON.stringify({ error: 'Invalid action. Use "connect", "disconnect", or "refresh-pickup"' }),
+        JSON.stringify({ error: 'Invalid action. Use "connect", "disconnect", "refresh-pickup", or "validate-token"' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
