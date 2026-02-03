@@ -17,7 +17,7 @@ export function ProductCard({ product, storeCountry, onClick }: ProductCardProps
 
   return (
     <div className="cursor-pointer group" onClick={onClick}>
-      <div className="aspect-square rounded-2xl overflow-hidden bg-neutral-800 relative">
+      <div className="aspect-[4/3] rounded-2xl overflow-hidden bg-neutral-800 relative">
         {displayImage ? (
           <>
             <img

@@ -93,7 +93,7 @@ export function ProductDetailModal({
                 <CarouselContent>
                   {allImages.map((imageUrl, index) => (
                     <CarouselItem key={index}>
-                      <div className="aspect-square">
+                      <div className="aspect-[4/3]">
                         <img
                           src={imageUrl}
                           alt={`${product.name} - Image ${index + 1}`}
@@ -105,7 +105,7 @@ export function ProductDetailModal({
                 </CarouselContent>
               </Carousel>
             ) : (
-              <div className="aspect-square bg-neutral-100 flex items-center justify-center text-neutral-400">
+              <div className="aspect-[4/3] bg-neutral-100 flex items-center justify-center text-neutral-400">
                 No image
               </div>
             )}
