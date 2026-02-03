@@ -17,15 +17,14 @@ export function WhatsAppBar({ whatsappNumber, storeName }: WhatsAppBarProps) {
   };
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 bg-black/95 backdrop-blur-sm border-t border-white/10 p-4 z-40">
-      <Button
+    <div className="fixed bottom-0 left-0 right-0 p-4 z-40 flex justify-center">
+      <button
         onClick={handleClick}
-        className="w-full bg-[#25D366] hover:bg-[#20BD5A] text-white font-medium"
-        size="lg"
+        className="flex items-center gap-2 px-6 py-3 bg-neutral-900 border border-white/20 rounded-full text-white text-sm font-medium hover:bg-neutral-800 transition-colors"
       >
-        <MessageCircle className="h-5 w-5 mr-2" />
+        <MessageCircle className="h-4 w-4" />
         Contact on WhatsApp
-      </Button>
+      </button>
     </div>
   );
 }
