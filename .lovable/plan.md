@@ -1,41 +1,53 @@
 
-
-## Change Product Images to Vertical Format
+## Redesign Notifications to Match Reference Design
 
 ### Current State
-The product images were just changed to horizontal 4:3 aspect ratio, but vertical/portrait format was intended.
+The app uses two toast notification systems:
+1. **Sonner** - Used throughout the dashboard for success/error messages
+2. **shadcn/ui Toaster** - Used in checkout and public-facing pages
 
-### Proposed Change
-Switch to a vertical/portrait aspect ratio. Common vertical ratios are:
-- **3:4** - Portrait format, taller than wide (inverse of 4:3)
-- **4:5** - Instagram-style portrait, slightly taller
-- **2:3** - Classic portrait photography ratio
+Both currently use a rectangular card-style design positioned at the corner of the screen.
 
-I'll use **aspect-[3/4]** as it provides a nice vertical look that works well for product images, especially clothing and fashion items.
+### Reference Design Analysis
+The uploaded images show a modern, minimal toast notification with:
+- Centered, floating pill shape at bottom of screen
+- Dark background with subtle border
+- Green checkmark icon for success states
+- Compact single-line text
+- No visible close button (auto-dismiss)
+- Smooth, non-intrusive appearance
 
-### Technical Changes
+### Proposed Design
 
-#### 1. ProductCard.tsx (Store Page)
-Change the image container from horizontal to vertical:
-
-```tsx
-// Current (horizontal)
-<div className="aspect-[4/3] rounded-2xl overflow-hidden bg-neutral-800 relative">
-
-// Updated (vertical)
-<div className="aspect-[3/4] rounded-2xl overflow-hidden bg-neutral-800 relative">
+```text
+Current Toast:                    New Toast:
+┌─────────────────────────┐       
+│ Title                 X │            ┌──────────────────────┐
+│ Description             │            │  ✓  Link copied      │
+└─────────────────────────┘            └──────────────────────┘
+(Corner positioned)                    (Bottom center, pill shape)
 ```
 
-#### 2. ProductDetailModal.tsx (Product Detail Page)
-Update both the carousel images and the fallback placeholder:
+### Technical Implementation
 
-```tsx
-// Current (horizontal)
-<div className="aspect-[4/3]">
+#### 1. Sonner Component Redesign
+Update `src/components/ui/sonner.tsx` to style toasts with:
+- Bottom center positioning
+- Pill shape with `rounded-full`
+- Dark background (`bg-neutral-900`)
+- Custom success icon styling (green checkmark)
+- Compact padding
+- No border or subtle `border-white/10`
 
-// Updated (vertical)
-<div className="aspect-[3/4]">
-```
+#### 2. shadcn/ui Toast Redesign
+Update `src/components/ui/toast.tsx` to match:
+- Center-aligned viewport at bottom
+- Rounded pill styling
+- Matching dark theme colors
+- Hide close button by default
+
+#### 3. Toaster Component Update
+Update `src/components/ui/toaster.tsx` layout for centered positioning
 
 ---
 
@@ -43,30 +55,27 @@ Update both the carousel images and the fallback placeholder:
 
 | File | Changes |
 |------|---------|
-| `src/components/ProductCard.tsx` | Change `aspect-[4/3]` to `aspect-[3/4]` |
-| `src/components/ProductDetailModal.tsx` | Change `aspect-[4/3]` to `aspect-[3/4]` in carousel and fallback |
+| `src/components/ui/sonner.tsx` | Restyle with pill shape, center position, dark theme, custom icons |
+| `src/components/ui/toast.tsx` | Update viewport centering and toast styling to pill shape |
+| `src/components/ui/toaster.tsx` | Adjust layout for centered display |
 
 ---
 
-### Visual Comparison
+### Styling Details
 
-```text
-Current (Horizontal 4:3):      New (Vertical 3:4):
-┌─────────────────┐            ┌───────────┐
-│                 │            │           │
-│    Product      │            │           │
-│     Image       │            │  Product  │
-│                 │            │   Image   │
-└─────────────────┘            │           │
-Product Name                   │           │
-₹Price                         └───────────┘
-                               Product Name
-                               ₹Price
-```
+**Sonner Configuration:**
+- Position: `bottom-center`
+- Toast classes: `rounded-full bg-neutral-900 border-white/10 px-4 py-3`
+- Success icon: Green checkmark with `text-green-500`
+- Duration: Auto-dismiss (default 4s)
 
-The vertical format is ideal for:
-- Clothing and fashion items
-- Portraits and lifestyle products
-- Mobile-first shopping experiences
-- Showcasing full product height
+**Toast Viewport:**
+- `fixed bottom-0 left-0 right-0 flex justify-center p-4`
+- Remove side positioning (`sm:right-0`)
+
+**Toast Component:**
+- `rounded-full` instead of `rounded-md`
+- Compact padding: `px-4 py-3`
+- Remove close button or make it hidden
+- Dark theme: `bg-neutral-900 text-white border-white/10`
 
