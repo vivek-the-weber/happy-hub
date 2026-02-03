@@ -15,30 +15,36 @@ export function CollectionTabs({ collections, selectedId, onSelect }: Collection
   }
 
   return (
-    <div className="flex gap-2 overflow-x-auto scrollbar-hide px-4 py-3">
+    <div className="flex gap-6 overflow-x-auto scrollbar-hide px-4 py-3">
       <button
         onClick={() => onSelect(null)}
         className={cn(
-          "px-4 py-1.5 rounded-full text-sm whitespace-nowrap transition-colors",
+          "relative pb-2 text-sm whitespace-nowrap transition-colors",
           selectedId === null
-            ? "bg-white text-black"
-            : "text-white/70 hover:text-white"
+            ? "text-white"
+            : "text-white/60 hover:text-white/80"
         )}
       >
         All
+        {selectedId === null && (
+          <span className="absolute bottom-0 left-0 w-full h-0.5 bg-primary rounded-full" />
+        )}
       </button>
       {visibleCollections.map((collection) => (
         <button
           key={collection.id}
           onClick={() => onSelect(collection.id)}
           className={cn(
-            "px-4 py-1.5 rounded-full text-sm whitespace-nowrap transition-colors",
+            "relative pb-2 text-sm whitespace-nowrap transition-colors",
             selectedId === collection.id
-              ? "bg-white text-black"
-              : "text-white/70 hover:text-white"
+              ? "text-white"
+              : "text-white/60 hover:text-white/80"
           )}
         >
           {collection.name}
+          {selectedId === collection.id && (
+            <span className="absolute bottom-0 left-0 w-full h-0.5 bg-primary rounded-full" />
+          )}
         </button>
       ))}
     </div>
