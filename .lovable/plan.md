@@ -1,52 +1,41 @@
 
 
-## Change Product Images to Horizontal Format
+## Change Product Images to Vertical Format
 
 ### Current State
-Both the store page product cards and product detail modal use square images (`aspect-square` = 1:1 ratio).
+The product images were just changed to horizontal 4:3 aspect ratio, but vertical/portrait format was intended.
 
 ### Proposed Change
-Switch to a horizontal/landscape aspect ratio for product images. The most common horizontal ratios are:
-- **4:3** - Traditional photo format, slightly wider than square
-- **16:9** - Widescreen format, very wide
-- **3:2** - Photography standard, good balance
+Switch to a vertical/portrait aspect ratio. Common vertical ratios are:
+- **3:4** - Portrait format, taller than wide (inverse of 4:3)
+- **4:5** - Instagram-style portrait, slightly taller
+- **2:3** - Classic portrait photography ratio
 
-I'll use **aspect-[4/3]** as it provides a nice horizontal look without being too wide, which works well for product images.
+I'll use **aspect-[3/4]** as it provides a nice vertical look that works well for product images, especially clothing and fashion items.
 
 ### Technical Changes
 
 #### 1. ProductCard.tsx (Store Page)
-Change the image container from square to horizontal:
+Change the image container from horizontal to vertical:
 
 ```tsx
-// Current
-<div className="aspect-square rounded-2xl overflow-hidden bg-neutral-800 relative">
-
-// Updated
+// Current (horizontal)
 <div className="aspect-[4/3] rounded-2xl overflow-hidden bg-neutral-800 relative">
+
+// Updated (vertical)
+<div className="aspect-[3/4] rounded-2xl overflow-hidden bg-neutral-800 relative">
 ```
 
 #### 2. ProductDetailModal.tsx (Product Detail Page)
 Update both the carousel images and the fallback placeholder:
 
 ```tsx
-// Current (carousel items)
-<div className="aspect-square">
-
-// Updated
+// Current (horizontal)
 <div className="aspect-[4/3]">
+
+// Updated (vertical)
+<div className="aspect-[3/4]">
 ```
-
-```tsx
-// Current (no image fallback)
-<div className="aspect-square bg-neutral-100 flex items-center justify-center text-neutral-400">
-
-// Updated
-<div className="aspect-[4/3] bg-neutral-100 flex items-center justify-center text-neutral-400">
-```
-
-#### 3. StorePage.tsx Grid Adjustment (Optional)
-The current grid uses 2 columns on mobile. With horizontal images, this still works well but we may want to consider single column on very small screens. For now, the 2-column layout will work fine with horizontal images.
 
 ---
 
@@ -54,26 +43,30 @@ The current grid uses 2 columns on mobile. With horizontal images, this still wo
 
 | File | Changes |
 |------|---------|
-| `src/components/ProductCard.tsx` | Change `aspect-square` to `aspect-[4/3]` |
-| `src/components/ProductDetailModal.tsx` | Change `aspect-square` to `aspect-[4/3]` in carousel and fallback |
+| `src/components/ProductCard.tsx` | Change `aspect-[4/3]` to `aspect-[3/4]` |
+| `src/components/ProductDetailModal.tsx` | Change `aspect-[4/3]` to `aspect-[3/4]` in carousel and fallback |
 
 ---
 
 ### Visual Comparison
 
 ```text
-Current (Square 1:1):          New (Horizontal 4:3):
-┌─────────────┐                ┌─────────────────┐
-│             │                │                 │
-│             │                │                 │
-│   Product   │                │    Product      │
-│    Image    │                │     Image       │
-│             │                │                 │
-│             │                └─────────────────┘
-└─────────────┘                Product Name
-Product Name                   ₹Price
-₹Price
+Current (Horizontal 4:3):      New (Vertical 3:4):
+┌─────────────────┐            ┌───────────┐
+│                 │            │           │
+│    Product      │            │           │
+│     Image       │            │  Product  │
+│                 │            │   Image   │
+└─────────────────┘            │           │
+Product Name                   │           │
+₹Price                         └───────────┘
+                               Product Name
+                               ₹Price
 ```
 
-The horizontal format gives products a more cinematic, premium look and works especially well for clothing, accessories, and lifestyle products.
+The vertical format is ideal for:
+- Clothing and fashion items
+- Portraits and lifestyle products
+- Mobile-first shopping experiences
+- Showcasing full product height
 
