@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Plus, ArrowLeft, ShoppingBag, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -7,6 +7,7 @@ import {
   Carousel,
   CarouselContent,
   CarouselItem,
+  type CarouselApi,
 } from '@/components/ui/carousel';
 import {
   Collapsible,
@@ -18,7 +19,6 @@ import { Product } from '@/hooks/useStore';
 import { toast } from 'sonner';
 import { formatPrice } from '@/lib/currency';
 import { cn } from '@/lib/utils';
-
 interface ProductDetailModalProps {
   product: Product | null;
   storeName: string;
@@ -38,6 +38,20 @@ export function ProductDetailModal({
 }: ProductDetailModalProps) {
   const { addToCart, itemCount } = useCart();
   const [descriptionOpen, setDescriptionOpen] = useState(false);
+  const [api, setApi] = useState<CarouselApi>();
+  const [currentSlide, setCurrentSlide] = useState(0);
+  const [slideCount, setSlideCount] = useState(0);
+
+  useEffect(() => {
+    if (!api) return;
+
+    setSlideCount(api.scrollSnapList().length);
+    setCurrentSlide(api.selectedScrollSnap());
+
+    api.on('select', () => {
+      setCurrentSlide(api.selectedScrollSnap());
+    });
+  }, [api]);
 
   if (!open || !product) return null;
 
@@ -89,21 +103,40 @@ export function ProductDetailModal({
         <div className="px-4 pt-2">
           <div className="bg-white rounded-2xl overflow-hidden relative">
             {allImages.length > 0 ? (
-              <Carousel className="w-full">
-                <CarouselContent>
-                  {allImages.map((imageUrl, index) => (
-                    <CarouselItem key={index}>
-                      <div className="aspect-[3/4]">
-                        <img
-                          src={imageUrl}
-                          alt={`${product.name} - Image ${index + 1}`}
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-                    </CarouselItem>
-                  ))}
-                </CarouselContent>
-              </Carousel>
+              <>
+                <Carousel className="w-full" setApi={setApi}>
+                  <CarouselContent>
+                    {allImages.map((imageUrl, index) => (
+                      <CarouselItem key={index}>
+                        <div className="aspect-[3/4]">
+                          <img
+                            src={imageUrl}
+                            alt={`${product.name} - Image ${index + 1}`}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                      </CarouselItem>
+                    ))}
+                  </CarouselContent>
+                </Carousel>
+                {slideCount > 1 && (
+                  <div className="flex justify-center gap-1.5 py-3">
+                    {Array.from({ length: slideCount }).map((_, index) => (
+                      <button
+                        key={index}
+                        onClick={() => api?.scrollTo(index)}
+                        className={cn(
+                          "w-1.5 h-1.5 rounded-full transition-all",
+                          currentSlide === index
+                            ? "bg-white w-4"
+                            : "bg-white/40"
+                        )}
+                        aria-label={`Go to slide ${index + 1}`}
+                      />
+                    ))}
+                  </div>
+                )}
+              </>
             ) : (
               <div className="aspect-[3/4] bg-neutral-100 flex items-center justify-center text-neutral-400">
                 No image
