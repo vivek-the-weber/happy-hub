@@ -1,5 +1,4 @@
 import { Toaster as Sonner, toast } from "sonner";
-import { CheckCircle, XCircle, AlertCircle, Info } from "lucide-react";
 
 type ToasterProps = React.ComponentProps<typeof Sonner>;
 
@@ -11,7 +10,7 @@ const Toaster = ({ ...props }: ToasterProps) => {
       toastOptions={{
         classNames: {
           toast:
-            "group toast rounded-full bg-neutral-900 text-white border border-white/10 shadow-lg px-4 py-3 flex items-center gap-2",
+            "group toast rounded-full bg-neutral-900 text-white border border-white/10 shadow-lg px-6 py-3 flex items-center justify-center text-center",
           description: "text-white/70 text-sm",
           actionButton: "bg-white text-neutral-900 rounded-full px-3 py-1 text-sm font-medium",
           cancelButton: "bg-white/10 text-white rounded-full px-3 py-1 text-sm",
@@ -22,10 +21,10 @@ const Toaster = ({ ...props }: ToasterProps) => {
         },
       }}
       icons={{
-        success: <CheckCircle className="h-4 w-4 text-green-500" />,
-        error: <XCircle className="h-4 w-4 text-red-500" />,
-        warning: <AlertCircle className="h-4 w-4 text-yellow-500" />,
-        info: <Info className="h-4 w-4 text-blue-500" />,
+        success: null,
+        error: null,
+        warning: null,
+        info: null,
       }}
       {...props}
     />
