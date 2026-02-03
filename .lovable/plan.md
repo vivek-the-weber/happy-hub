@@ -1,207 +1,199 @@
 
 
-## Replicate Dark Store Design
+## Redesign Product Detail Modal
 
 ### Reference Design Analysis
-Based on the uploaded image, the target design has these key characteristics:
 
-1. **Dark Theme**: Pure black background (#000) for the entire store page
-2. **Minimal Header**: Store name on left, cart icon with badge on right (no avatar)
-3. **Collection Tabs**: Horizontal scrolling tabs (All, T-shirts, Shirts, etc.) for filtering products
-4. **Clean Product Cards**:
-   - Square images with rounded corners (no Card border/shadow)
-   - Dark gray placeholder for products without images (says "COMING SOON")
-   - Product name below image (white text)
-   - Price in green below name
-   - **No "Add to cart" button** visible on cards (tapping opens detail modal)
-5. **Fixed Bottom Bar**: WhatsApp contact button
-6. **Store Footer**: Store name with copyright year
-7. **Theme Toggle**: Floating button in bottom-right corner
+Based on the uploaded image, the product detail page should have:
 
-### Technical Changes
+1. **Full-screen dark page** (not a centered dialog modal)
+2. **Header with navigation**: Back arrow (left), Cart icon with badge (right)
+3. **Large product image**: White/light background with rounded corners
+4. **Product name**: Large white text, bold
+5. **Price**: Green primary color below name
+6. **Collapsible description section**: "Description" label with chevron, expands to show text
+7. **Add to cart button**: Full-width, green/primary, rounded, fixed at bottom with plus icon
+
+### Current vs. Target Design
+
+| Aspect | Current | Target |
+|--------|---------|--------|
+| Layout | Centered Dialog popup | Full-screen overlay page |
+| Background | Default card background | Pure black (#000) |
+| Header | None (just dialog close) | Back arrow + Cart icon |
+| Image | Carousel in modal | Large image with white bg, rounded corners |
+| Description | Plain text always visible | Collapsible accordion section |
+| Button | In flow, default style | Fixed at bottom, full green, rounded-full |
+
+### Technical Implementation
 
 ---
 
-#### 1. Store Page Layout (`src/pages/StorePage.tsx`)
+#### Convert from Dialog to Full-Screen Overlay
 
-**Changes:**
-- Add forced dark theme class to store pages
-- Remove the current "Store Header" section with bio/badges
-- Add horizontal collection tabs for filtering
-- Add fixed bottom bar with WhatsApp button
-- Add store-specific footer with store name
-- Add floating theme toggle button
+Instead of using the `Dialog` component, we'll create a full-screen overlay that slides in, similar to the reference design. This provides a more app-like experience.
 
-**New layout structure:**
+**New structure:**
 ```
 ┌─────────────────────────────────────┐
-│ Store Name              🛒 (badge)  │  ← Minimal header
+│ ← (back)                    🛒 (1)  │  ← Header
 ├─────────────────────────────────────┤
-│ [All] [T-shirts] [Shirts] [...]     │  ← Scrollable collection tabs
-├─────────────────────────────────────┤
-│  ┌───────┐  ┌───────┐               │
-│  │       │  │       │               │
-│  │ Image │  │ Image │               │
-│  │       │  │       │               │
-│  └───────┘  └───────┘               │
-│  Name       Name                    │
-│  ₹Price     ₹Price                  │  ← Product grid
 │                                     │
-│  ┌───────┐  ┌───────┐               │
-│  │       │  │       │               │
-│  ... more products ...              │
+│   ┌───────────────────────────┐     │
+│   │                           │     │
+│   │     Product Image         │     │  ← White bg, rounded
+│   │     (with carousel)       │     │
+│   │                           │     │
+│   └───────────────────────────┘     │
+│                                     │
+│   Product Name                      │  ← Large, white, bold
+│   ₹Price                            │  ← Green primary
+│   ─────────────────────────────     │  ← Separator
+│   Description                    ▼  │  ← Collapsible trigger
+│   Description text...               │  ← Collapsible content
+│                                     │
 ├─────────────────────────────────────┤
-│ © STORE NAME 2026                   │  ← Store footer
-├─────────────────────────────────────┤
-│   [📱 Contact on WhatsApp]          │  ← Fixed bottom bar
+│   [+ Add to cart]                   │  ← Fixed bottom button
 └─────────────────────────────────────┘
-                               [☀️]    ← Theme toggle (floating)
 ```
 
 ---
 
-#### 2. Store Header Update (`src/components/StoreHeader.tsx`)
+#### Component Changes
 
-**Changes:**
-- Remove the avatar/logo circle
-- Keep just the store name text and cart icon
-- Apply dark theme styling (black background, white text)
-- Remove `border-b` for cleaner look
+**1. Convert to full-screen overlay:**
+- Remove `Dialog`, `DialogContent`, `DialogHeader` components
+- Use a fixed full-screen div with `inset-0` positioning
+- Add animation for slide-up entrance
 
----
+**2. Add custom header:**
+- Back arrow button (ArrowLeft icon) that calls `onOpenChange(false)`
+- Cart icon with badge (same as StoreHeader)
+- Black background, sticky positioning
 
-#### 3. Product Card Redesign (`src/components/ProductCard.tsx`)
+**3. Redesign image section:**
+- White/light gray background on the image container
+- Larger rounded corners (`rounded-2xl`)
+- Keep carousel functionality for multiple images
+- Swipe indicator dots instead of arrow buttons on mobile
 
-**Current:**
-- Card with shadow/border
-- "Add to cart" button visible
-- "No image" text placeholder
+**4. Add collapsible description:**
+- Use `Collapsible` component from Radix UI
+- "Description" label with ChevronDown icon
+- Smooth expand/collapse animation
+- Separator line above description section
 
-**New Design:**
-- No Card wrapper (just the content)
-- Image with rounded corners directly
-- Dark gray placeholder with "COMING SOON" text and icon
-- Product name and price only (no button)
-- Clicking anywhere opens detail modal
-
----
-
-#### 4. New Component: Collection Tabs (`src/components/store/CollectionTabs.tsx`)
-
-**Purpose:** Horizontal scrolling tabs to filter products by collection
-
-**Features:**
-- "All" tab always first (shows all products)
-- Other tabs from visible collections
-- Active tab has different styling
-- Smooth horizontal scroll on mobile
-- Filter products based on selected collection
+**5. Redesign Add to Cart button:**
+- Fixed at bottom of screen
+- Full-width with padding
+- Green primary color
+- Fully rounded (`rounded-full`)
+- Plus icon with text
+- Safe area padding for mobile
 
 ---
-
-#### 5. New Component: Store Footer (`src/components/store/StoreFooter.tsx`)
-
-**Design:**
-- Store name in uppercase with copyright year
-- Muted gray text
-- Centered alignment
-
----
-
-#### 6. New Component: Fixed WhatsApp Bar (`src/components/store/WhatsAppBar.tsx`)
-
-**Design:**
-- Fixed to bottom of screen
-- Black/dark background with padding
-- Full-width button with WhatsApp icon
-- Only shows if store has WhatsApp number configured
-
----
-
-#### 7. Theme Toggle (Optional Enhancement)
-
-Add a floating theme toggle button in the bottom-right corner to let customers switch between dark and light modes.
-
----
-
-### Files to Create
-
-| File | Purpose |
-|------|---------|
-| `src/components/store/CollectionTabs.tsx` | Horizontal scrollable collection filter tabs |
-| `src/components/store/StoreFooter.tsx` | Store-specific footer with copyright |
-| `src/components/store/WhatsAppBar.tsx` | Fixed bottom WhatsApp contact button |
-| `src/components/store/ThemeToggle.tsx` | Floating theme toggle button |
 
 ### Files to Modify
 
 | File | Changes |
 |------|---------|
-| `src/pages/StorePage.tsx` | Add dark theme, collection filtering, new layout |
-| `src/components/StoreHeader.tsx` | Remove avatar, simplify to name + cart only |
-| `src/components/ProductCard.tsx` | Remove Card wrapper, remove Add to Cart button, new placeholder |
-| `src/index.css` | Add store-specific dark theme class |
+| `src/components/ProductDetailModal.tsx` | Complete redesign to full-screen overlay with new layout |
 
 ---
 
-### Implementation Details
-
-#### Product Card New Design
+### Code Structure
 
 ```tsx
-// Simplified structure (no Card wrapper)
-<div className="cursor-pointer" onClick={onClick}>
-  <div className="aspect-square rounded-2xl overflow-hidden bg-neutral-800">
-    {displayImage ? (
-      <img ... />
-    ) : (
-      <div className="flex flex-col items-center justify-center h-full text-neutral-500">
-        <ImageIcon className="h-8 w-8 mb-2" />
-        <span className="text-xs uppercase tracking-wider">Coming Soon</span>
+// New ProductDetailModal structure
+export function ProductDetailModal({ ... }) {
+  const [descriptionOpen, setDescriptionOpen] = useState(false);
+  
+  if (!open || !product) return null;
+  
+  return (
+    <div className="fixed inset-0 z-50 bg-black">
+      {/* Header */}
+      <header className="sticky top-0 z-10 bg-black flex items-center justify-between px-4 h-14">
+        <button onClick={() => onOpenChange(false)}>
+          <ArrowLeft className="h-5 w-5 text-white" />
+        </button>
+        <Link to="/cart" className="relative">
+          <ShoppingBag className="h-5 w-5 text-white" />
+          {/* Badge */}
+        </Link>
+      </header>
+      
+      {/* Scrollable content */}
+      <div className="overflow-y-auto pb-24">
+        {/* Image with white bg */}
+        <div className="px-4 pt-4">
+          <div className="bg-white rounded-2xl overflow-hidden">
+            <Carousel>...</Carousel>
+          </div>
+        </div>
+        
+        {/* Product info */}
+        <div className="px-4 pt-6 space-y-4">
+          <h1 className="text-2xl font-bold text-white">{product.name}</h1>
+          <p className="text-xl font-semibold text-primary">{formatPrice(...)}</p>
+          
+          <Separator className="bg-neutral-800" />
+          
+          {/* Collapsible description */}
+          <Collapsible open={descriptionOpen} onOpenChange={setDescriptionOpen}>
+            <CollapsibleTrigger className="flex items-center justify-between w-full">
+              <span className="text-white">Description</span>
+              <ChevronDown className={cn("transition-transform", descriptionOpen && "rotate-180")} />
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <p className="text-neutral-400 pt-3">{product.description}</p>
+            </CollapsibleContent>
+          </Collapsible>
+        </div>
       </div>
-    )}
-  </div>
-  <h3 className="text-white text-sm mt-3 line-clamp-1">{product.name}</h3>
-  <p className="text-primary font-medium">₹{price}</p>
-</div>
+      
+      {/* Fixed bottom button */}
+      <div className="fixed bottom-0 left-0 right-0 p-4 bg-black">
+        <Button onClick={handleAddToCart} className="w-full rounded-full" size="lg">
+          <Plus className="h-4 w-4 mr-2" />
+          Add to cart
+        </Button>
+      </div>
+    </div>
+  );
+}
 ```
 
-#### Collection Tabs Design
+---
 
-```tsx
-<div className="flex gap-2 overflow-x-auto scrollbar-hide px-4 py-3">
-  <button 
-    className={cn(
-      "px-4 py-1.5 rounded-full text-sm whitespace-nowrap transition-colors",
-      active ? "bg-white text-black" : "text-white/70 hover:text-white"
-    )}
-  >
-    All
-  </button>
-  {collections.map(c => (
-    <button key={c.id} ...>{c.name}</button>
-  ))}
-</div>
-```
+### Visual Details
 
-#### Store Page Dark Theme
+- **Background**: Pure black (`bg-black`)
+- **Image container**: White background (`bg-white`), large rounded corners (`rounded-2xl`)
+- **Product name**: `text-2xl font-bold text-white`
+- **Price**: `text-xl font-semibold text-primary` (green)
+- **Description trigger**: White text with chevron icon
+- **Description content**: `text-neutral-400` for muted appearance
+- **Separator**: `bg-neutral-800` for subtle dark line
+- **Button**: Primary green, `rounded-full`, fixed at bottom with safe padding
 
-The store pages will use a dedicated dark theme by applying specific classes:
-- `bg-black` or `bg-neutral-950` for pure black background
-- `text-white` for all text
-- Override card/muted colors for dark appearance
+---
+
+### Animation
+
+Add smooth entrance/exit animations:
+- Slide up from bottom on open
+- Fade out on close
+- Use CSS transitions or animate classes
 
 ---
 
 ### Summary
 
-This redesign transforms the store pages to match the reference:
-1. **Dark minimal aesthetic** with pure black backgrounds
-2. **Cleaner product cards** without buttons (tap to view details)
-3. **Collection-based filtering** with horizontal tabs
-4. **Fixed WhatsApp bar** for easy contact
-5. **Store-branded footer** with copyright
-6. **Optional theme toggle** for user preference
-
-The changes maintain existing functionality (cart, product details modal) while updating the visual design to match the reference.
+This redesign transforms the product detail from a standard dialog modal into a full-screen immersive view that:
+1. Matches the dark store aesthetic
+2. Provides better mobile UX with full-screen layout
+3. Uses collapsible description to save space
+4. Has a prominent fixed "Add to cart" button
+5. Includes proper navigation with back arrow and cart access
 
