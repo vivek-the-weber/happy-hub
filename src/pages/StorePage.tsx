@@ -84,7 +84,7 @@ export default function StorePage({ subdomainSlug }: StorePageProps) {
   }
 
   return (
-    <div className="min-h-screen bg-black pb-24">
+    <div className="min-h-screen bg-black">
       <StoreHeader store={store} />
       
       {/* Collection Tabs */}
@@ -122,11 +122,11 @@ export default function StorePage({ subdomainSlug }: StorePageProps) {
         )}
       </section>
 
+      {/* WhatsApp Contact */}
+      <WhatsAppBar whatsappNumber={store.whatsapp_number} storeName={store.name} />
+
       {/* Store Footer */}
       <StoreFooter storeName={store.name} />
-
-      {/* Fixed WhatsApp Bar */}
-      <WhatsAppBar whatsappNumber={store.whatsapp_number} storeName={store.name} />
 
       {/* Theme Toggle */}
       <ThemeToggle />

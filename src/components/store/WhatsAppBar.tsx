@@ -17,7 +17,7 @@ export function WhatsAppBar({ whatsappNumber, storeName }: WhatsAppBarProps) {
   };
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 p-4 z-40 flex justify-center">
+    <div className="py-8 flex justify-center">
       <button
         onClick={handleClick}
         className="flex items-center gap-2 px-6 py-3 bg-neutral-900 border border-white/20 rounded-full text-white text-sm font-medium hover:bg-neutral-800 transition-colors"
