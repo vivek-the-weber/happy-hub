@@ -1,8 +1,8 @@
 
 
-## Add Copy-to-Clipboard Buttons on Buyer Payment Screen
+## Add Copy Button to "Amount to Pay"
 
-Add small copy buttons next to the **Payment Code** and **UPI ID** fields on the `/order/:orderId/pay` page, so buyers can quickly copy values into their UPI app.
+Add a copy-to-clipboard button next to the amount on the buyer payment screen, following the same pattern already used for the Payment Code and UPI ID.
 
 ---
 
@@ -10,12 +10,14 @@ Add small copy buttons next to the **Payment Code** and **UPI ID** fields on the
 
 **File: `src/pages/OrderPayment.tsx`**
 
-1. **Import `Copy` and `Check` icons** from `lucide-react` (alongside existing icons).
-2. **Add state** to track which value was just copied (`copiedField: 'code' | 'upi' | null`) with a 2-second auto-reset.
-3. **Payment Code section** -- add a small icon button next to the code that copies `order.payment_code` to clipboard and briefly shows a checkmark.
-4. **UPI ID section** -- add a similar copy button next to `order.seller_upi_id_snapshot`.
+1. Extend the `copiedField` state type to include `'amount'`.
+2. Wrap the amount text in a flex container with a copy button, same style as the existing ones.
+3. Copy the raw numeric amount (not the formatted currency string) so buyers can paste it directly into their UPI app. Use `order.total_amount.toString()` as the copied value.
 
-Both buttons will use `navigator.clipboard.writeText()` and show a `Check` icon for 2 seconds after copying, then revert to the `Copy` icon. They will be styled subtly (`text-background/40 hover:text-background/60`) to not distract from the main content.
+| Line Range | Change |
+|------------|--------|
+| ~10 | Update state type: `'code' | 'upi' | null` becomes `'code' | 'upi' | 'amount' | null` |
+| ~72-74 (Amount card) | Wrap the formatted price in a flex row with a Copy/Check icon button using `handleCopy(order.total_amount.toString(), 'amount')` |
 
-No new files or dependencies needed -- `lucide-react` and React state are sufficient.
+No new imports or dependencies needed -- reuses existing `Copy`, `Check` icons and `handleCopy` function.
 
