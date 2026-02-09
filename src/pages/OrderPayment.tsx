@@ -1,5 +1,6 @@
+import { useState, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { Loader2, AlertTriangle, CheckCircle } from 'lucide-react';
+import { Loader2, AlertTriangle, CheckCircle, Copy, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useOrderPaymentDetails } from '@/hooks/useOrderPaymentDetails';
 import { formatPrice } from '@/lib/currency';
@@ -7,7 +8,13 @@ import { formatPrice } from '@/lib/currency';
 export default function OrderPayment() {
   const { orderId } = useParams<{ orderId: string }>();
   const { data, isLoading, error } = useOrderPaymentDetails(orderId);
+  const [copiedField, setCopiedField] = useState<'code' | 'upi' | null>(null);
 
+  const handleCopy = useCallback((value: string, field: 'code' | 'upi') => {
+    navigator.clipboard.writeText(value);
+    setCopiedField(field);
+    setTimeout(() => setCopiedField(null), 2000);
+  }, []);
   // Loading
   if (isLoading) {
     return (
@@ -69,9 +76,18 @@ export default function OrderPayment() {
           {/* Payment Code */}
           <div className="bg-white/5 border border-white/10 rounded-2xl p-6 text-center">
             <p className="text-background/60 text-sm mb-2">Payment Code</p>
-            <p className="text-3xl font-bold font-mono tracking-[0.3em] text-primary">
-              {order.payment_code}
-            </p>
+            <div className="flex items-center justify-center gap-2">
+              <p className="text-3xl font-bold font-mono tracking-[0.3em] text-primary">
+                {order.payment_code}
+              </p>
+              <button
+                onClick={() => handleCopy(order.payment_code, 'code')}
+                className="text-background/40 hover:text-background/60 transition-colors p-1"
+                aria-label="Copy payment code"
+              >
+                {copiedField === 'code' ? <Check className="h-5 w-5 text-green-400" /> : <Copy className="h-5 w-5" />}
+              </button>
+            </div>
             <p className="text-background/40 text-xs mt-3">
               This payment code is valid for a limited time.
             </p>
@@ -84,7 +100,16 @@ export default function OrderPayment() {
           {order.seller_upi_id_snapshot && (
             <div className="bg-white/5 border border-white/10 rounded-2xl p-5">
               <p className="text-background/60 text-sm mb-1">Pay to UPI ID</p>
-              <p className="font-medium font-mono text-sm break-all">{order.seller_upi_id_snapshot}</p>
+              <div className="flex items-center justify-between gap-2">
+                <p className="font-medium font-mono text-sm break-all">{order.seller_upi_id_snapshot}</p>
+                <button
+                  onClick={() => handleCopy(order.seller_upi_id_snapshot!, 'upi')}
+                  className="text-background/40 hover:text-background/60 transition-colors p-1 shrink-0"
+                  aria-label="Copy UPI ID"
+                >
+                  {copiedField === 'upi' ? <Check className="h-4 w-4 text-green-400" /> : <Copy className="h-4 w-4" />}
+                </button>
+              </div>
             </div>
           )}
 
