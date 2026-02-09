@@ -40,12 +40,13 @@ export interface Order {
   customer_phone: string;
   customer_address: string;
   customer_notes: string | null;
-  status: 'pending' | 'confirmed' | 'completed' | 'cancelled' | 'pending_payment';
+  status: 'pending' | 'confirmed' | 'completed' | 'cancelled' | 'pending_payment' | 'manual_review';
   total_amount: number;
   payment_code: string | null;
   code_status: string | null;
   code_expires_at: string | null;
   seller_upi_id_snapshot: string | null;
+  confirmed_at: string | null;
   created_at: string;
   updated_at: string;
 }
