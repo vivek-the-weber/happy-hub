@@ -1,101 +1,104 @@
 
 
-## Step 2: Order Creation + Payment Code Generation (Complete Implementation)
+## Step 3: Buyer Payment Screen + UPI Deep Link
 
-This is the full, combined plan covering the database migration (with tightened constraints) and all frontend updates.
+This plan covers the buyer-facing payment screen shown after order placement, including the constraint fix needed for orders to work at all.
 
 ---
 
-### What This Does
+### Prerequisite Fix: Status Constraint
 
-When a buyer places an order, the database automatically:
-1. Generates a unique 6-character alphanumeric code (e.g., `H2B9K7`)
-2. Sets a 45-minute validity window
-3. Snapshots the seller's current UPI ID (frozen forever on that order)
-4. Sets the order status to `pending_payment`
+The existing `orders_status_check` constraint only allows `pending`, `confirmed`, `completed`, `cancelled` -- missing `pending_payment`. This blocks all order creation. The migration will drop and recreate it with the new value included.
 
-No buyer or seller payment UI is built in this step -- only the data foundation.
+---
+
+### The RLS Challenge
+
+Orders can only be read (SELECT) by store owners. Buyers place orders anonymously and cannot read their order back from the database. To power the payment screen without opening up the orders table, a **database function** running as `SECURITY DEFINER` will return only the payment-relevant fields for a given order ID. The UUID itself acts as a secret token (unguessable).
 
 ---
 
 ### Part 1: Database Migration
 
-A single migration that adds columns, functions, and a trigger to the `orders` table.
+A single migration that:
 
-**New columns on `orders`:**
-
-| Column | Type | Nullable | Default | Constraint |
-|--------|------|----------|---------|------------|
-| `payment_code` | TEXT | NOT NULL | (set by trigger) | UNIQUE |
-| `code_status` | TEXT | NOT NULL | `'active'` | CHECK: `active`, `used`, `expired` |
-| `code_expires_at` | TIMESTAMPTZ | YES | (set by trigger) | -- |
-| `seller_upi_id_snapshot` | TEXT | YES | (set by trigger) | -- |
-
-**Important:** Since the table currently has no rows (we cleared them), adding `payment_code` as `NOT NULL` with a trigger is safe -- there are no existing rows that would violate the constraint.
-
-**Database function: `generate_payment_code()`**
-- Produces a random 6-character string from `A-Z, 0-9`
-- Loops and retries if the code already exists (max 100 attempts)
-- Called only by the trigger, never by client code
-
-**Trigger function: `set_order_payment_code()`**
-- Fires `BEFORE INSERT` on every new order
-- Sets `payment_code` to a unique generated code
-- Sets `code_status` to `'active'`
-- Sets `code_expires_at` to `NOW() + 45 minutes`
-- Looks up the seller's active UPI ID from `seller_payment_settings` and stores it in `seller_upi_id_snapshot`
-- Overrides `status` to `'pending_payment'`
-
-**Expiry function: `expire_active_payment_codes()`**
-- Bulk-updates all rows where `code_status = 'active'` AND `code_expires_at < NOW()`
-- Sets `code_status = 'expired'`
-- Does NOT change the order status (remains `pending_payment`)
-- Callable via RPC from the frontend
+1. **Fixes the status constraint** -- drops `orders_status_check` and recreates it with `pending_payment` included
+2. **Creates `get_order_payment_details(order_id UUID)`** -- a SECURITY DEFINER function that returns:
+   - `id`, `store_id`, `total_amount`, `payment_code`, `code_status`, `code_expires_at`, `seller_upi_id_snapshot`, `status`
+   - Only returns data for the exact order ID provided
+   - Anonymous-safe (no RLS bypass on the table itself)
 
 ---
 
-### Part 2: Frontend -- Update Order Type
+### Part 2: New Page -- OrderPayment.tsx
 
-**File: `src/hooks/useStore.tsx`**
+**New file: `src/pages/OrderPayment.tsx`**
 
-Update the `Order` interface to include new fields:
+A dedicated buyer payment screen at route `/order/:orderId/pay`.
+
+**What it displays:**
+
+- Store name (fetched from public `stores` table using `store_id`)
+- Order amount (formatted using the store's currency)
+- Payment code -- large, bold, monospaced, prominent
+- Seller UPI ID (from `seller_upi_id_snapshot`)
+- Validity message: "This payment code is valid for a limited time."
+- Buyer instructions near the Pay button
+
+**UPI Pay button:**
+
+- Label: "Pay via UPI"
+- On click: opens a UPI deep link:
 
 ```text
-status: 'pending' | 'confirmed' | 'completed' | 'cancelled' | 'pending_payment'
-payment_code: string | null
-code_status: string | null
-code_expires_at: string | null
-seller_upi_id_snapshot: string | null
+upi://pay?pa={seller_upi_id_snapshot}&pn={store_name}&am={total_amount}&cu=INR&tn={payment_code}
 ```
 
-Update `useStoreOrders` to call the `expire_active_payment_codes` RPC before fetching orders, ensuring stale codes are marked expired on every dashboard visit.
+- `am` = exact order total
+- `tn` = payment code only (no extra text)
+- OS handles UPI app selection
+
+**Expired code handling:**
+
+- If `code_status = 'expired'`: disable the Pay button and show: "The payment code has expired. Your order will be confirmed after manual review."
+- Order is NOT cancelled
+
+**Edge cases:**
+
+- If order not found or not in `pending_payment` status: show a generic "Order not found or already processed" message
+- Loading state while fetching
 
 ---
 
-### Part 3: Frontend -- Update Order Creation (Cart.tsx)
+### Part 3: Add Route
+
+**File: `src/App.tsx`**
+
+Add `/order/:orderId/pay` route in both the main domain routing and the subdomain routing blocks, pointing to the new `OrderPayment` page.
+
+---
+
+### Part 4: Redirect After Order Placement
 
 **File: `src/pages/Cart.tsx`**
 
-- Remove the explicit `status` field from the order insert (the trigger sets it to `pending_payment`)
-- Everything else stays the same -- the trigger handles `payment_code`, `code_status`, `code_expires_at`, and `seller_upi_id_snapshot` automatically
+After a successful order insert:
+
+- Instead of showing the static "Order Placed!" screen, navigate to `/order/{orderId}/pay`
+- Remove the `orderPlaced` state and its associated confirmation UI (it is fully replaced by the new payment page)
 
 ---
 
-### Part 4: Frontend -- Update Order List Display
+### Part 5: Add Hook for Fetching Order Payment Details
 
-**File: `src/components/dashboard/OrderList.tsx`**
+**File: `src/hooks/useStore.tsx`**
 
-- Add `pending_payment` to the `statusColors` map (orange/amber theme)
-- Add `Pending Payment` as an option in the status update dropdown
-- Display the payment code and its status in the expanded order details section (a small info row showing the 6-character code and whether it's active/used/expired)
+Add a new hook `useOrderPaymentDetails(orderId)` that:
 
----
-
-### Part 5: Fix Duplicate Store Logo Section
-
-**File: `src/pages/Dashboard.tsx`**
-
-Lines 304-353 are an exact duplicate of the Store Logo card (lines 251-300). This duplicate block will be removed.
+- Calls the `get_order_payment_details` RPC with the order ID
+- Also calls `expire_active_payment_codes` before fetching (to ensure stale codes are marked expired)
+- Returns the payment-relevant fields
+- Also fetches the store name using the returned `store_id` (stores are publicly readable)
 
 ---
 
@@ -103,11 +106,11 @@ Lines 304-353 are an exact duplicate of the Store Logo card (lines 251-300). Thi
 
 | Area | File | What Changes |
 |------|------|-------------|
-| Database | Migration | Add 4 columns, 2 functions, 1 trigger to `orders` |
-| Types | `src/hooks/useStore.tsx` | Extend `Order` interface, add RPC call in `useStoreOrders` |
-| Checkout | `src/pages/Cart.tsx` | Remove explicit `status` from insert |
-| Dashboard | `src/components/dashboard/OrderList.tsx` | Add `pending_payment` display + payment code info |
-| Dashboard | `src/pages/Dashboard.tsx` | Remove duplicate Store Logo card |
+| Database | Migration | Fix status constraint + create `get_order_payment_details` RPC |
+| New page | `src/pages/OrderPayment.tsx` | Buyer payment screen with UPI deep link |
+| Routing | `src/App.tsx` | Add `/order/:orderId/pay` route |
+| Checkout | `src/pages/Cart.tsx` | Redirect to payment page after order placement |
+| Hook | `src/hooks/useStore.tsx` | Add `useOrderPaymentDetails` hook |
 
-No new files are created. No buyer payment UI or seller confirmation UI is built.
+No seller UI, no UTR input, no payment verification, no retry logic.
 
