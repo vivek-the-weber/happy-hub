@@ -301,56 +301,6 @@ export default function Dashboard() {
 
             {/* Payment Settings */}
             <PaymentSettings store={store} />
-            <div className="bg-white/5 border border-white/10 rounded-2xl p-6">
-              <h3 className="text-lg font-semibold mb-4">Store Logo</h3>
-              <p className="text-sm text-background/60 mb-4">
-                Upload a logo for your store. This will appear in the header when customers visit.
-              </p>
-              <div className="flex items-center gap-6">
-                <Avatar className="h-20 w-20">
-                  <AvatarImage src={logoUrl || undefined} alt={store.name} />
-                  <AvatarFallback className="bg-primary text-primary-foreground text-2xl font-semibold">
-                    {store.name.charAt(0).toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="flex flex-col gap-2">
-                  <input
-                    ref={logoInputRef}
-                    type="file"
-                    accept="image/*"
-                    onChange={handleLogoUpload}
-                    className="hidden"
-                    id="logo-upload"
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => logoInputRef.current?.click()}
-                    disabled={uploadingLogo}
-                    className="border-white/20 bg-white/5 text-background hover:bg-white/10"
-                  >
-                    <Upload className="h-4 w-4 mr-2" />
-                    {uploadingLogo ? 'Uploading...' : 'Upload Logo'}
-                  </Button>
-                  {logoUrl && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={handleRemoveLogo}
-                      className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
-                    >
-                      <X className="h-4 w-4 mr-2" />
-                      Remove
-                    </Button>
-                  )}
-                  <p className="text-xs text-background/40">
-                    Recommended: Square image, max 2MB
-                  </p>
-                </div>
-              </div>
-            </div>
 
             {/* Store Info Form */}
             <div className="bg-white/5 border border-white/10 rounded-2xl p-6">

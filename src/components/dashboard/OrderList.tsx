@@ -19,9 +19,16 @@ interface OrderListProps {
 
 const statusColors: Record<Order['status'], string> = {
   pending: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
+  pending_payment: 'bg-orange-500/20 text-orange-400 border-orange-500/30',
   confirmed: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
   completed: 'bg-primary/20 text-primary border-primary/30',
   cancelled: 'bg-red-500/20 text-red-400 border-red-500/30',
+};
+
+const codeStatusColors: Record<string, string> = {
+  active: 'bg-green-500/20 text-green-400 border-green-500/30',
+  used: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
+  expired: 'bg-red-500/20 text-red-400 border-red-500/30',
 };
 
 export function OrderList({ store }: OrderListProps) {
@@ -145,6 +152,21 @@ function OrderCard({ order, storeId, storeCountry, isExpanded, onToggle }: Order
             )}
           </div>
 
+          {/* Payment Code */}
+          {order.payment_code && (
+            <div className="bg-white/5 border border-white/10 rounded-xl p-3 flex items-center justify-between">
+              <div>
+                <p className="text-xs text-background/50 mb-1">Payment Code</p>
+                <p className="font-mono text-lg font-bold tracking-widest text-background">{order.payment_code}</p>
+              </div>
+              {order.code_status && (
+                <Badge className={`${codeStatusColors[order.code_status] || ''} border text-xs`}>
+                  {order.code_status}
+                </Badge>
+              )}
+            </div>
+          )}
+
           {/* Order Items */}
           {items && items.length > 0 && (
             <div className="border-t border-white/10 pt-4">
@@ -173,6 +195,7 @@ function OrderCard({ order, storeId, storeCountry, isExpanded, onToggle }: Order
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="bg-foreground border-white/10">
+                  <SelectItem value="pending_payment" className="text-background hover:bg-white/5">Pending Payment</SelectItem>
                   <SelectItem value="pending" className="text-background hover:bg-white/5">Pending</SelectItem>
                   <SelectItem value="confirmed" className="text-background hover:bg-white/5">Confirmed</SelectItem>
                   <SelectItem value="completed" className="text-background hover:bg-white/5">Completed</SelectItem>

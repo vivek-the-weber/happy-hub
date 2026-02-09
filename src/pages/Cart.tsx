@@ -157,7 +157,7 @@ export default function Cart() {
             customer_state: formData.state,
             customer_postal_code: formData.postalCode,
             customer_country: formData.country,
-          });
+          } as any);
 
         if (orderError) throw orderError;
 
