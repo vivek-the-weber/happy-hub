@@ -296,6 +296,41 @@ export type Database = {
         }
         Relationships: []
       }
+      seller_payment_settings: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          store_id: string
+          updated_at: string
+          upi_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          store_id: string
+          updated_at?: string
+          upi_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          store_id?: string
+          updated_at?: string
+          upi_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "seller_payment_settings_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: true
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       shiprocket_connections: {
         Row: {
           created_at: string
