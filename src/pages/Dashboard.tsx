@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Package, ShoppingBag, Settings, Copy, Check, Truck, Upload, X, Loader2 } from 'lucide-react';
+import { Package, ShoppingBag, Settings, Copy, Check, Truck, Upload, X, Loader2, ShieldCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ProductManager } from '@/components/dashboard/ProductManager';
 import { OrderList } from '@/components/dashboard/OrderList';
+import { ConfirmPayment } from '@/components/dashboard/ConfirmPayment';
 import { ShippingSettings } from '@/components/dashboard/ShippingSettings';
 import { PaymentSettings } from '@/components/dashboard/PaymentSettings';
 import { useAuth } from '@/hooks/useAuth';
@@ -218,6 +219,13 @@ export default function Dashboard() {
                 <span className="hidden sm:inline">Orders</span>
               </TabsTrigger>
               <TabsTrigger 
+                value="confirm"
+                className="data-[state=active]:bg-white/10 data-[state=active]:text-background text-background/60"
+              >
+                <ShieldCheck className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">Confirm</span>
+              </TabsTrigger>
+              <TabsTrigger 
                 value="shipping"
                 className="data-[state=active]:bg-white/10 data-[state=active]:text-background text-background/60"
               >
@@ -240,6 +248,10 @@ export default function Dashboard() {
 
           <TabsContent value="orders" className="mt-6">
             <OrderList store={store} />
+          </TabsContent>
+
+          <TabsContent value="confirm" className="mt-6">
+            <ConfirmPayment store={store} />
           </TabsContent>
 
           <TabsContent value="shipping" className="mt-6">

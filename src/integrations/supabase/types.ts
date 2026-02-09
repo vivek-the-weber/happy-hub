@@ -125,6 +125,7 @@ export type Database = {
         Row: {
           code_expires_at: string | null
           code_status: string
+          confirmed_at: string | null
           created_at: string
           customer_address: string
           customer_address_line1: string | null
@@ -148,6 +149,7 @@ export type Database = {
         Insert: {
           code_expires_at?: string | null
           code_status?: string
+          confirmed_at?: string | null
           created_at?: string
           customer_address: string
           customer_address_line1?: string | null
@@ -171,6 +173,7 @@ export type Database = {
         Update: {
           code_expires_at?: string | null
           code_status?: string
+          confirmed_at?: string | null
           created_at?: string
           customer_address?: string
           customer_address_line1?: string | null
@@ -446,6 +449,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      confirm_payment_by_code: { Args: { p_code: string }; Returns: Json }
       expire_active_payment_codes: { Args: never; Returns: undefined }
       generate_payment_code: { Args: never; Returns: string }
       get_order_payment_details: {
