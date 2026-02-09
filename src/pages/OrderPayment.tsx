@@ -42,11 +42,6 @@ export default function OrderPayment() {
   const { order, storeName, storeCountry } = data;
   const isExpired = order.code_status === 'expired';
 
-  const upiLink = `upi://pay?pa=${encodeURIComponent(order.seller_upi_id_snapshot || '')}&pn=${encodeURIComponent(storeName)}&am=${order.total_amount}&cu=INR&tn=${encodeURIComponent(order.payment_code)}`;
-
-  const handlePay = () => {
-    window.location.href = upiLink;
-  };
 
   return (
     <div className="min-h-screen bg-surface-inverse text-background flex flex-col">
@@ -80,6 +75,9 @@ export default function OrderPayment() {
             <p className="text-background/40 text-xs mt-3">
               This payment code is valid for a limited time.
             </p>
+            <p className="text-green-400 font-semibold text-sm mt-4">
+              ENTER THE CODE <span className="font-mono tracking-wider">{order.payment_code.toUpperCase()}</span> IN THE NOTE/REMARKS WHILE PAYING IN YOUR UPI APP
+            </p>
           </div>
 
           {/* Seller UPI ID */}
@@ -100,17 +98,6 @@ export default function OrderPayment() {
             </div>
           )}
 
-          {/* Pay button */}
-          {order.seller_upi_id_snapshot && (
-            <Button
-              onClick={handlePay}
-              disabled={isExpired}
-              className="w-full h-14 rounded-xl text-base font-semibold"
-              size="lg"
-            >
-              Pay via UPI
-            </Button>
-          )}
 
           {/* Buyer instructions */}
           {!isExpired && (
@@ -120,9 +107,6 @@ export default function OrderPayment() {
               </p>
               <p className="text-background/50 text-xs leading-relaxed">
                 Do not change the payment note.
-              </p>
-              <p className="text-background/50 text-xs leading-relaxed">
-                The order will be confirmed after the seller enters this code.
               </p>
             </div>
           )}
