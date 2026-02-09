@@ -123,6 +123,8 @@ export type Database = {
       }
       orders: {
         Row: {
+          code_expires_at: string | null
+          code_status: string
           created_at: string
           customer_address: string
           customer_address_line1: string | null
@@ -136,12 +138,16 @@ export type Database = {
           customer_postal_code: string | null
           customer_state: string | null
           id: string
+          payment_code: string
+          seller_upi_id_snapshot: string | null
           status: string
           store_id: string
           total_amount: number
           updated_at: string
         }
         Insert: {
+          code_expires_at?: string | null
+          code_status?: string
           created_at?: string
           customer_address: string
           customer_address_line1?: string | null
@@ -155,12 +161,16 @@ export type Database = {
           customer_postal_code?: string | null
           customer_state?: string | null
           id?: string
+          payment_code: string
+          seller_upi_id_snapshot?: string | null
           status?: string
           store_id: string
           total_amount: number
           updated_at?: string
         }
         Update: {
+          code_expires_at?: string | null
+          code_status?: string
           created_at?: string
           customer_address?: string
           customer_address_line1?: string | null
@@ -174,6 +184,8 @@ export type Database = {
           customer_postal_code?: string | null
           customer_state?: string | null
           id?: string
+          payment_code?: string
+          seller_upi_id_snapshot?: string | null
           status?: string
           store_id?: string
           total_amount?: number
@@ -434,7 +446,8 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      expire_active_payment_codes: { Args: never; Returns: undefined }
+      generate_payment_code: { Args: never; Returns: string }
     }
     Enums: {
       [_ in never]: never

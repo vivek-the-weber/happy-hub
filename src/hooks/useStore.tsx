@@ -40,8 +40,12 @@ export interface Order {
   customer_phone: string;
   customer_address: string;
   customer_notes: string | null;
-  status: 'pending' | 'confirmed' | 'completed' | 'cancelled';
+  status: 'pending' | 'confirmed' | 'completed' | 'cancelled' | 'pending_payment';
   total_amount: number;
+  payment_code: string | null;
+  code_status: string | null;
+  code_expires_at: string | null;
+  seller_upi_id_snapshot: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -112,6 +116,8 @@ export function useStoreOrders(storeId: string | undefined) {
     queryKey: ['store-orders', storeId],
     queryFn: async () => {
       if (!storeId) return [];
+      // Expire stale active codes before fetching
+      await supabase.rpc('expire_active_payment_codes');
       const { data, error } = await supabase
         .from('orders')
         .select('*')
