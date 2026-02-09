@@ -21,7 +21,6 @@ export default function Cart() {
   const { cart, updateQuantity, removeFromCart, clearCart, total } = useCart();
   const [isCheckout, setIsCheckout] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [orderPlaced, setOrderPlaced] = useState<{ storeName: string; paymentInstructions: string | null } | null>(null);
   const [storeShippingInfo, setStoreShippingInfo] = useState<StoreShippingInfo | null>(null);
   const [customerPostalCode, setCustomerPostalCode] = useState('');
 
@@ -175,17 +174,12 @@ export default function Cart() {
 
         if (itemsError) throw itemsError;
 
-        const { data: store } = await supabase
-          .from('stores')
-          .select('payment_instructions')
-          .eq('id', storeId)
-          .single();
-
-        setOrderPlaced({ storeName, paymentInstructions: store?.payment_instructions || null });
+        // Redirect to payment page after successful order
+        clearCart();
+        toast.success('Order placed successfully!');
+        navigate(`/order/${orderId}/pay`);
+        return;
       }
-
-      clearCart();
-      toast.success('Order placed successfully!');
     } catch (error) {
       console.error('Error placing order:', error);
       toast.error('Failed to place order. Please try again.');
@@ -193,42 +187,6 @@ export default function Cart() {
       setIsSubmitting(false);
     }
   };
-
-  // Order confirmation
-  if (orderPlaced) {
-    return (
-      <div className="min-h-screen bg-surface-inverse text-background flex flex-col">
-        <header className="p-6 flex items-center justify-between">
-          <div className="w-16" />
-          <Link to="/" className="text-xl font-bold">happy2buy</Link>
-          <div className="w-16" />
-        </header>
-
-        <main className="flex-1 flex flex-col items-center justify-center px-6 text-center">
-          <div className="w-20 h-20 rounded-full bg-primary/20 flex items-center justify-center mb-6">
-            <ShoppingBag className="h-10 w-10 text-primary" />
-          </div>
-          <h1 className="text-2xl font-bold mb-2">Order Placed!</h1>
-          <p className="text-background/60 mb-8">Thank you for your order from {orderPlaced.storeName}</p>
-          
-          {orderPlaced.paymentInstructions && (
-            <div className="bg-white/5 border border-white/10 rounded-2xl p-6 mb-8 max-w-sm w-full text-left">
-              <h3 className="font-medium mb-2">Payment Instructions</h3>
-              <p className="text-background/80 whitespace-pre-wrap text-sm">{orderPlaced.paymentInstructions}</p>
-            </div>
-          )}
-
-          <p className="text-sm text-background/60 mb-6">
-            The seller will contact you soon to confirm your order.
-          </p>
-
-          <Button onClick={() => navigate('/')} className="h-12 rounded-xl px-8">
-            Continue Shopping
-          </Button>
-        </main>
-      </div>
-    );
-  }
 
   // Empty cart
   if (cart.length === 0) {

@@ -448,6 +448,19 @@ export type Database = {
     Functions: {
       expire_active_payment_codes: { Args: never; Returns: undefined }
       generate_payment_code: { Args: never; Returns: string }
+      get_order_payment_details: {
+        Args: { p_order_id: string }
+        Returns: {
+          code_expires_at: string
+          code_status: string
+          id: string
+          payment_code: string
+          seller_upi_id_snapshot: string
+          status: string
+          store_id: string
+          total_amount: number
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never
