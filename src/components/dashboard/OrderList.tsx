@@ -26,11 +26,6 @@ const statusColors: Record<Order['status'], string> = {
   manual_review: 'bg-purple-500/20 text-purple-400 border-purple-500/30',
 };
 
-const codeStatusColors: Record<string, string> = {
-  active: 'bg-green-500/20 text-green-400 border-green-500/30',
-  used: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
-  expired: 'bg-red-500/20 text-red-400 border-red-500/30',
-};
 
 export function OrderList({ store }: OrderListProps) {
   const { data: orders, isLoading } = useStoreOrders(store.id);
@@ -153,20 +148,6 @@ function OrderCard({ order, storeId, storeCountry, isExpanded, onToggle }: Order
             )}
           </div>
 
-          {/* Payment Code */}
-          {order.payment_code && (
-            <div className="bg-white/5 border border-white/10 rounded-xl p-3 flex items-center justify-between">
-              <div>
-                <p className="text-xs text-background/50 mb-1">Payment Code</p>
-                <p className="font-mono text-lg font-bold tracking-widest text-background">{order.payment_code}</p>
-              </div>
-              {order.code_status && (
-                <Badge className={`${codeStatusColors[order.code_status] || ''} border text-xs`}>
-                  {order.code_status}
-                </Badge>
-              )}
-            </div>
-          )}
 
           {/* Order Items */}
           {items && items.length > 0 && (
