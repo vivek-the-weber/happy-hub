@@ -8,9 +8,9 @@ import { formatPrice } from '@/lib/currency';
 export default function OrderPayment() {
   const { orderId } = useParams<{ orderId: string }>();
   const { data, isLoading, error } = useOrderPaymentDetails(orderId);
-  const [copiedField, setCopiedField] = useState<'code' | 'upi' | 'amount' | null>(null);
+  const [copiedField, setCopiedField] = useState<'code' | 'upi' | null>(null);
 
-  const handleCopy = useCallback((value: string, field: 'code' | 'upi' | 'amount') => {
+  const handleCopy = useCallback((value: string, field: 'code' | 'upi') => {
     navigator.clipboard.writeText(value);
     setCopiedField(field);
     setTimeout(() => setCopiedField(null), 2000);
@@ -70,16 +70,7 @@ export default function OrderPayment() {
           {/* Amount */}
           <div className="bg-white/5 border border-white/10 rounded-2xl p-6 text-center">
             <p className="text-background/60 text-sm mb-1">Amount to Pay</p>
-            <div className="flex items-center justify-center gap-2">
-              <p className="text-3xl font-bold">{formatPrice(order.total_amount, storeCountry)}</p>
-              <button
-                onClick={() => handleCopy(order.total_amount.toString(), 'amount')}
-                className="text-background/40 hover:text-background/60 transition-colors p-1"
-                aria-label="Copy amount"
-              >
-                {copiedField === 'amount' ? <Check className="h-5 w-5 text-green-400" /> : <Copy className="h-5 w-5" />}
-              </button>
-            </div>
+            <p className="text-3xl font-bold">{formatPrice(order.total_amount, storeCountry)}</p>
           </div>
 
           {/* Payment Code */}
