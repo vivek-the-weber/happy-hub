@@ -1,33 +1,21 @@
 
 
-## Update Buyer Payment Screen
+## Add Copy-to-Clipboard Buttons on Buyer Payment Screen
 
-Three changes to `src/pages/OrderPayment.tsx`:
-
-### 1. Remove "Pay via UPI" button
-Delete lines 103-113 (the entire pay button block) and the now-unused `upiLink` variable and `handlePay` function (lines 45-49).
-
-### 2. Remove "The order will be confirmed after the seller enters this code." text
-Delete line 124-126 from the buyer instructions section.
-
-### 3. Add green instruction to enter the code in UPI note
-Add a prominent green-colored instruction below the Payment Code card telling the buyer to enter the exact code (in all caps) as the note when paying in their UPI app. Example text:
-
-**"Enter the code {ORDER_CODE} in the note/remarks while paying in your UPI app"** -- displayed in green (`text-green-400`), placed right after the payment code display.
+Add small copy buttons next to the **Payment Code** and **UPI ID** fields on the `/order/:orderId/pay` page, so buyers can quickly copy values into their UPI app.
 
 ---
 
-### Technical Details
+### Changes
 
 **File: `src/pages/OrderPayment.tsx`**
 
-| Change | Lines | Detail |
-|--------|-------|--------|
-| Remove `upiLink` and `handlePay` | 45-49 | Dead code after button removal |
-| Remove Pay via UPI button | 103-113 | Entire button block |
-| Remove "seller enters this code" line | 124-126 | Single instruction line |
-| Add green note instruction | After line 83 (inside Payment Code card) | Green text with the exact code in caps |
-| Remove `Button` import | 3 | No longer used on this page (still used in error state -- will check) |
+1. **Import `Copy` and `Check` icons** from `lucide-react` (alongside existing icons).
+2. **Add state** to track which value was just copied (`copiedField: 'code' | 'upi' | null`) with a 2-second auto-reset.
+3. **Payment Code section** -- add a small icon button next to the code that copies `order.payment_code` to clipboard and briefly shows a checkmark.
+4. **UPI ID section** -- add a similar copy button next to `order.seller_upi_id_snapshot`.
 
-The `Button` import is still needed for the "Go Home" button in the error state, so it stays.
+Both buttons will use `navigator.clipboard.writeText()` and show a `Check` icon for 2 seconds after copying, then revert to the `Copy` icon. They will be styled subtly (`text-background/40 hover:text-background/60`) to not distract from the main content.
+
+No new files or dependencies needed -- `lucide-react` and React state are sufficient.
 
