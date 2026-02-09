@@ -1,81 +1,118 @@
 
-## Redesign Notifications to Match Reference Design
 
-### Current State
-The app uses two toast notification systems:
-1. **Sonner** - Used throughout the dashboard for success/error messages
-2. **shadcn/ui Toaster** - Used in checkout and public-facing pages
+## Seller Payment Settings (UPI ID Setup)
 
-Both currently use a rectangular card-style design positioned at the corner of the screen.
-
-### Reference Design Analysis
-The uploaded images show a modern, minimal toast notification with:
-- Centered, floating pill shape at bottom of screen
-- Dark background with subtle border
-- Green checkmark icon for success states
-- Compact single-line text
-- No visible close button (auto-dismiss)
-- Smooth, non-intrusive appearance
-
-### Proposed Design
-
-```text
-Current Toast:                    New Toast:
-┌─────────────────────────┐       
-│ Title                 X │            ┌──────────────────────┐
-│ Description             │            │  ✓  Link copied      │
-└─────────────────────────┘            └──────────────────────┘
-(Corner positioned)                    (Bottom center, pill shape)
-```
-
-### Technical Implementation
-
-#### 1. Sonner Component Redesign
-Update `src/components/ui/sonner.tsx` to style toasts with:
-- Bottom center positioning
-- Pill shape with `rounded-full`
-- Dark background (`bg-neutral-900`)
-- Custom success icon styling (green checkmark)
-- Compact padding
-- No border or subtle `border-white/10`
-
-#### 2. shadcn/ui Toast Redesign
-Update `src/components/ui/toast.tsx` to match:
-- Center-aligned viewport at bottom
-- Rounded pill styling
-- Matching dark theme colors
-- Hide close button by default
-
-#### 3. Toaster Component Update
-Update `src/components/ui/toaster.tsx` layout for centered positioning
+### Overview
+Add a new "Payments" section within the Settings tab of the seller dashboard where sellers can add, view, and update their UPI ID for receiving payments.
 
 ---
+
+### 1. Database Changes
+
+Create a new `seller_payment_settings` table:
+
+| Column | Type | Details |
+|--------|------|---------|
+| id | uuid | Primary key, auto-generated |
+| store_id | uuid | Foreign key to stores, unique (one per store) |
+| upi_id | text | Stored in lowercase, max 50 chars |
+| is_active | boolean | Default true |
+| created_at | timestamptz | Default now() |
+| updated_at | timestamptz | Default now(), auto-updated via trigger |
+
+RLS Policies:
+- Store owners can SELECT, INSERT, UPDATE, and DELETE their own payment settings (matched via `stores.owner_id = auth.uid()`)
+
+The existing `update_updated_at_column` trigger function will be reused for auto-updating `updated_at`.
+
+---
+
+### 2. New Component: `PaymentSettings.tsx`
+
+Located at `src/components/dashboard/PaymentSettings.tsx`, this component handles two UI states:
+
+**State A -- No UPI ID saved:**
+- Header: "Payments" with a credit-card-style icon
+- Helper text explaining the purpose
+- UPI ID text input with placeholder `anything@upi`
+- Ownership confirmation checkbox
+- "Save UPI ID" button
+- Disclaimer text at the bottom
+
+**State B -- UPI ID exists:**
+- Shows masked UPI ID (e.g., `sho***@upi`)
+- "Edit" button to switch to edit mode
+- Edit mode shows the same form pre-filled with the current UPI ID
+
+**Validation (client-side):**
+- Must contain `@`
+- No spaces allowed
+- Max 50 characters
+- Converted to lowercase before saving
+- Checkbox must be checked to save
+
+**Pending orders check:**
+- Before allowing an update (not initial add), query orders with status `pending` for the store
+- If pending orders exist, show an inline warning and block the save
+
+---
+
+### 3. New Hook: `usePaymentSettings.tsx`
+
+Located at `src/hooks/usePaymentSettings.tsx`, provides:
+- `usePaymentSettings(storeId)` -- fetches the current payment settings
+- `useUpsertPaymentSettings()` -- creates or updates the UPI ID
+- `useHasPendingOrders(storeId)` -- checks if store has pending orders (used to block UPI updates)
+
+---
+
+### 4. Dashboard Integration
+
+Update `src/pages/Dashboard.tsx` to add the PaymentSettings card inside the Settings tab, placed between the "Store Logo" and "Store Information" sections. This follows the existing card pattern (`bg-white/5 border border-white/10 rounded-2xl p-6`).
+
+---
+
+### Files to Create
+| File | Purpose |
+|------|---------|
+| `src/components/dashboard/PaymentSettings.tsx` | Payment settings UI component |
+| `src/hooks/usePaymentSettings.tsx` | Data hooks for payment settings |
 
 ### Files to Modify
-
 | File | Changes |
 |------|---------|
-| `src/components/ui/sonner.tsx` | Restyle with pill shape, center position, dark theme, custom icons |
-| `src/components/ui/toast.tsx` | Update viewport centering and toast styling to pill shape |
-| `src/components/ui/toaster.tsx` | Adjust layout for centered display |
+| `src/pages/Dashboard.tsx` | Import and render PaymentSettings in Settings tab |
+
+### Database Migration
+| Action | Details |
+|--------|---------|
+| Create table | `seller_payment_settings` with columns listed above |
+| Add RLS policies | Owner-based SELECT, INSERT, UPDATE, DELETE |
+| Add trigger | `update_updated_at_column` on the new table |
+| Add unique constraint | One payment setting per store (`store_id` unique) |
 
 ---
 
-### Styling Details
+### UPI Masking Logic
 
-**Sonner Configuration:**
-- Position: `bottom-center`
-- Toast classes: `rounded-full bg-neutral-900 border-white/10 px-4 py-3`
-- Success icon: Green checkmark with `text-green-500`
-- Duration: Auto-dismiss (default 4s)
+```text
+Input:  shopname@upi
+Output: sho***@upi
 
-**Toast Viewport:**
-- `fixed bottom-0 left-0 right-0 flex justify-center p-4`
-- Remove side positioning (`sm:right-0`)
+Rule: Show first 3 chars of local part, mask rest with ***, keep @ and domain intact.
+If local part is 3 chars or fewer, mask all but the first char.
+```
 
-**Toast Component:**
-- `rounded-full` instead of `rounded-md`
-- Compact padding: `px-4 py-3`
-- Remove close button or make it hidden
-- Dark theme: `bg-neutral-900 text-white border-white/10`
+---
+
+### Validation Summary
+
+| Rule | Implementation |
+|------|----------------|
+| Must contain `@` | Client-side check before save |
+| No spaces | Client-side regex / check |
+| Max 50 chars | `maxLength` on input + client-side check |
+| Lowercase | `toLowerCase()` before saving |
+| Checkbox required | Button disabled until checked |
+| Block update with pending orders | Query check before allowing edit save |
 
