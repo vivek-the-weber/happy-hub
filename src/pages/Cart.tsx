@@ -138,11 +138,13 @@ export default function Cart() {
         ].filter(Boolean).join(', ');
 
         const orderId = crypto.randomUUID();
+        const accessToken = crypto.randomUUID();
 
         const { error: orderError } = await supabase
           .from('orders')
           .insert({
             id: orderId,
+            order_access_token: accessToken,
             store_id: storeId,
             customer_name: formData.fullName,
             customer_phone: formData.phone,
@@ -174,22 +176,9 @@ export default function Cart() {
 
         if (itemsError) throw itemsError;
 
-        // Fetch the access token for the tracking page
-        const { data: orderData } = await supabase
-          .from('orders')
-          .select('order_access_token')
-          .eq('id', orderId)
-          .maybeSingle();
-
         clearCart();
         toast.success('Order placed successfully!');
-
-        if (orderData?.order_access_token) {
-          navigate(`/order/${orderId}?token=${orderData.order_access_token}`);
-        } else {
-          // Fallback - shouldn't happen but handle gracefully
-          navigate(`/order/${orderId}`);
-        }
+        navigate(`/order/${orderId}?token=${accessToken}`);
         return;
       }
     } catch (error) {
