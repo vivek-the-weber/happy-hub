@@ -174,10 +174,22 @@ export default function Cart() {
 
         if (itemsError) throw itemsError;
 
-        // Redirect to payment page after successful order
+        // Fetch the access token for the tracking page
+        const { data: orderData } = await supabase
+          .from('orders')
+          .select('order_access_token')
+          .eq('id', orderId)
+          .maybeSingle();
+
         clearCart();
         toast.success('Order placed successfully!');
-        navigate(`/order/${orderId}/pay`);
+
+        if (orderData?.order_access_token) {
+          navigate(`/order/${orderId}?token=${orderData.order_access_token}`);
+        } else {
+          // Fallback - shouldn't happen but handle gracefully
+          navigate(`/order/${orderId}`);
+        }
         return;
       }
     } catch (error) {
