@@ -139,6 +139,7 @@ export type Database = {
           customer_postal_code: string | null
           customer_state: string | null
           id: string
+          order_access_token: string
           payment_code: string
           seller_upi_id_snapshot: string | null
           status: string
@@ -163,6 +164,7 @@ export type Database = {
           customer_postal_code?: string | null
           customer_state?: string | null
           id?: string
+          order_access_token?: string
           payment_code: string
           seller_upi_id_snapshot?: string | null
           status?: string
@@ -187,6 +189,7 @@ export type Database = {
           customer_postal_code?: string | null
           customer_state?: string | null
           id?: string
+          order_access_token?: string
           payment_code?: string
           seller_upi_id_snapshot?: string | null
           status?: string
@@ -449,8 +452,9 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      confirm_payment_by_code: { Args: { p_code: string }; Returns: Json }
-      expire_active_payment_codes: { Args: never; Returns: undefined }
+      confirm_payment_by_code:
+        | { Args: { p_code: string }; Returns: Json }
+        | { Args: { p_action?: string; p_code: string }; Returns: Json }
       generate_payment_code: { Args: never; Returns: string }
       get_order_payment_details: {
         Args: { p_order_id: string }
@@ -460,6 +464,17 @@ export type Database = {
           id: string
           payment_code: string
           seller_upi_id_snapshot: string
+          status: string
+          store_id: string
+          total_amount: number
+        }[]
+      }
+      get_order_tracking: {
+        Args: { p_order_id: string; p_token: string }
+        Returns: {
+          customer_name: string
+          id: string
+          payment_code: string
           status: string
           store_id: string
           total_amount: number

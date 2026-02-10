@@ -18,12 +18,9 @@ interface OrderListProps {
 }
 
 const statusColors: Record<Order['status'], string> = {
-  pending: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
-  pending_payment: 'bg-orange-500/20 text-orange-400 border-orange-500/30',
-  confirmed: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
-  completed: 'bg-primary/20 text-primary border-primary/30',
-  cancelled: 'bg-red-500/20 text-red-400 border-red-500/30',
-  manual_review: 'bg-purple-500/20 text-purple-400 border-purple-500/30',
+  pending_payment: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
+  on_hold: 'bg-orange-500/20 text-orange-400 border-orange-500/30',
+  confirmed: 'bg-green-500/20 text-green-400 border-green-500/30',
 };
 
 
@@ -178,11 +175,8 @@ function OrderCard({ order, storeId, storeCountry, isExpanded, onToggle }: Order
                 </SelectTrigger>
                 <SelectContent className="bg-foreground border-white/10">
                   <SelectItem value="pending_payment" className="text-background hover:bg-white/5">Pending Payment</SelectItem>
-                  <SelectItem value="pending" className="text-background hover:bg-white/5">Pending</SelectItem>
+                  <SelectItem value="on_hold" className="text-background hover:bg-white/5">On Hold</SelectItem>
                   <SelectItem value="confirmed" className="text-background hover:bg-white/5">Confirmed</SelectItem>
-                  <SelectItem value="manual_review" className="text-background hover:bg-white/5">Manual Review</SelectItem>
-                  <SelectItem value="completed" className="text-background hover:bg-white/5">Completed</SelectItem>
-                  <SelectItem value="cancelled" className="text-background hover:bg-white/5">Cancelled</SelectItem>
                 </SelectContent>
               </Select>
             </div>
