@@ -11,6 +11,7 @@ import Auth from "./pages/Auth";
 import Onboarding from "./pages/Onboarding";
 import Dashboard from "./pages/Dashboard";
 import StorePage from "./pages/StorePage";
+import StoreMyPage from "./pages/StoreMyPage";
 import Cart from "./pages/Cart";
 import OrderTracking from "./pages/OrderTracking";
 import Privacy from "./pages/Privacy";
@@ -24,6 +25,7 @@ const App = () => {
   
   // If on a store subdomain (e.g., mystore.happy2buy.in), render store directly
   if (subdomainSlug && !isMainDomain()) {
+    const isStoreMy = subdomainSlug === 'storemy';
     return (
       <QueryClientProvider client={queryClient}>
         <PasscodeGate>
@@ -35,7 +37,7 @@ const App = () => {
                 <Routes>
                   <Route path="/cart" element={<Cart />} />
                   <Route path="/order/:orderId" element={<OrderTracking />} />
-                  <Route path="/*" element={<StorePage subdomainSlug={subdomainSlug} />} />
+                  <Route path="/*" element={isStoreMy ? <StoreMyPage /> : <StorePage subdomainSlug={subdomainSlug} />} />
                 </Routes>
               </BrowserRouter>
             </TooltipProvider>
