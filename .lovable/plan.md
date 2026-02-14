@@ -1,35 +1,74 @@
 
 
-## Fix: Database Trigger Overwrites Client-Provided Access Token
+## Custom Website for "storemy.happy2buy.in"
 
-### Root Cause
-The `set_order_payment_code` trigger function **always** sets `order_access_token := gen_random_uuid()::TEXT`, overwriting the value the client sends during INSERT. So the token in the redirect URL never matches the one in the database, causing "Order not found".
+Build a completely unique, hand-crafted page for the `storemy` subdomain that replaces the standard store template with a full branded website experience.
 
-### Solution
-Update the trigger function to only generate a token when one is not already provided by the client. Add a conditional check: if `NEW.order_access_token` is NULL or empty, generate one; otherwise, keep the client-provided value.
+### What You'll Get
 
-### Changes
+Instead of the generic product grid, visitors to `storemy.happy2buy.in` will see a polished, scroll-based website with:
 
-**Database Migration (1 file)**
+1. **Hero Section** -- Full-width banner with the store's name, tagline, and a "Shop Now" call-to-action that scrolls to products
+2. **Product Showcase** -- A curated, visually rich product display (larger cards, featured layout) pulling real products from the database
+3. **About Section** -- A brand story/mission section with text content (editable later)
+4. **Testimonials** -- Customer review cards with quotes, names, and ratings
+5. **Standard footer and WhatsApp contact** -- Reuses existing components
 
-Update the `set_order_payment_code()` trigger function. Change the unconditional assignment:
+The cart, checkout, and order tracking flows remain unchanged.
+
+---
+
+### Technical Details
+
+**New file: `src/pages/StoreMyPage.tsx`**
+- A standalone page component with all four sections
+- Fetches store and product data using existing `useStoreBySlug` and `useStoreProducts` hooks
+- Dark theme (pure black) consistent with the project's aesthetic
+- Scroll-triggered reveal animations matching the landing page style
+- Includes the existing `StoreHeader`, `WhatsAppBar`, and `StoreFooter` components
+- Testimonials will be hardcoded initially (can be made dynamic later)
+
+**Modified file: `src/App.tsx`**
+- Add a conditional check in the subdomain branch: if `subdomainSlug === 'storemy'`, render `StoreMyPage` instead of `StorePage`
+- All other subdomains continue using the standard template
+
+**No database changes required** -- the page reads from the existing `stores` and `products` tables using the same hooks.
+
+### Page Structure
 
 ```text
--- Before (always overwrites):
-NEW.order_access_token := gen_random_uuid()::TEXT;
-
--- After (only if not provided):
-IF NEW.order_access_token IS NULL OR NEW.order_access_token = '' THEN
-  NEW.order_access_token := gen_random_uuid()::TEXT;
-END IF;
++----------------------------------+
+|  StoreHeader (black, sticky)     |
++----------------------------------+
+|                                  |
+|  HERO SECTION                    |
+|  Store name + tagline            |
+|  [Shop Now] button               |
+|                                  |
++----------------------------------+
+|                                  |
+|  PRODUCT SHOWCASE                |
+|  Featured products in a          |
+|  larger, editorial layout        |
+|                                  |
++----------------------------------+
+|                                  |
+|  ABOUT SECTION                   |
+|  Brand story / mission text      |
+|                                  |
++----------------------------------+
+|                                  |
+|  TESTIMONIALS                    |
+|  3 customer review cards         |
+|                                  |
++----------------------------------+
+|  WhatsAppBar                     |
++----------------------------------+
+|  StoreFooter                     |
++----------------------------------+
 ```
 
-No frontend changes needed -- the client-side code in Cart.tsx is already correct (generates token and sends it with the INSERT).
-
-### Why This Fixes It
-1. Client generates `accessToken = crypto.randomUUID()`
-2. Client sends it in the INSERT payload
-3. Trigger sees the token is already set and leaves it alone
-4. Client redirects to `/order/{id}?token={accessToken}`
-5. The RPC `get_order_tracking` finds the order because the tokens match
+### Files Changed
+- **Create**: `src/pages/StoreMyPage.tsx` (the full custom page)
+- **Edit**: `src/App.tsx` (route the `storemy` subdomain to the new page)
 
