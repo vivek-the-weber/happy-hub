@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 import { formatPrice } from '@/lib/currency';
 import { CheckoutForm, CheckoutFormData } from '@/components/checkout/CheckoutForm';
 import { CheckoutOrderSummary } from '@/components/checkout/CheckoutOrderSummary';
+import { TrysyCheckoutBadge } from '@/components/checkout/TrysyCheckoutBadge';
 import { useShippingRates, useStoreShiprocketStatus } from '@/hooks/useShippingRates';
 
 interface StoreShippingInfo {
@@ -249,8 +250,9 @@ export default function Cart() {
               </div>
 
               {/* Right: Order Summary */}
-              <div className="w-full lg:w-80 mb-6 lg:mb-0">
-              <CheckoutOrderSummary 
+              <div className="w-full lg:w-80 mb-6 lg:mb-0 space-y-4">
+                <TrysyCheckoutBadge storeId={firstStoreId} />
+                <CheckoutOrderSummary 
                   cart={cart}
                   subtotal={total}
                   storeCountry={firstStoreCountry}
