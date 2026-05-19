@@ -513,6 +513,13 @@ export type Database = {
           total_amount: number
         }[]
       }
+      get_trysy_public_config: {
+        Args: { p_store_id: string }
+        Returns: {
+          trysy_api_key: string
+          trysy_store_id: string
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never
