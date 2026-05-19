@@ -447,6 +447,39 @@ export type Database = {
         }
         Relationships: []
       }
+      trysy_connections: {
+        Row: {
+          created_at: string
+          id: string
+          is_enabled: boolean
+          store_id: string
+          trysy_api_key: string
+          trysy_fee: number
+          trysy_store_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_enabled?: boolean
+          store_id: string
+          trysy_api_key: string
+          trysy_fee?: number
+          trysy_store_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_enabled?: boolean
+          store_id?: string
+          trysy_api_key?: string
+          trysy_fee?: number
+          trysy_store_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

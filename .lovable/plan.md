@@ -1,74 +1,61 @@
+## Trysy connection settings for sellers
 
+Add a **Trysy** section to the seller Dashboard where each seller can connect their Trysy account by pasting their **Trysy Store ID** and **Trysy API Key**, and toggle Trysy on/off for their store. No runtime SDK injection or order forwarding yet — just the credentials UI + storage. Trysy fee is fixed at ₹99 for later use.
 
-## Custom Website for "storemy.happy2buy.in"
+### What the seller sees
 
-Build a completely unique, hand-crafted page for the `storemy` subdomain that replaces the standard store template with a full branded website experience.
-
-### What You'll Get
-
-Instead of the generic product grid, visitors to `storemy.happy2buy.in` will see a polished, scroll-based website with:
-
-1. **Hero Section** -- Full-width banner with the store's name, tagline, and a "Shop Now" call-to-action that scrolls to products
-2. **Product Showcase** -- A curated, visually rich product display (larger cards, featured layout) pulling real products from the database
-3. **About Section** -- A brand story/mission section with text content (editable later)
-4. **Testimonials** -- Customer review cards with quotes, names, and ratings
-5. **Standard footer and WhatsApp contact** -- Reuses existing components
-
-The cart, checkout, and order tracking flows remain unchanged.
-
----
-
-### Technical Details
-
-**New file: `src/pages/StoreMyPage.tsx`**
-- A standalone page component with all four sections
-- Fetches store and product data using existing `useStoreBySlug` and `useStoreProducts` hooks
-- Dark theme (pure black) consistent with the project's aesthetic
-- Scroll-triggered reveal animations matching the landing page style
-- Includes the existing `StoreHeader`, `WhatsAppBar`, and `StoreFooter` components
-- Testimonials will be hardcoded initially (can be made dynamic later)
-
-**Modified file: `src/App.tsx`**
-- Add a conditional check in the subdomain branch: if `subdomainSlug === 'storemy'`, render `StoreMyPage` instead of `StorePage`
-- All other subdomains continue using the standard template
-
-**No database changes required** -- the page reads from the existing `stores` and `products` tables using the same hooks.
-
-### Page Structure
+A new **Trysy** card on the Dashboard (next to Payment Settings / Shiprocket), styled in the existing glassmorphism look:
 
 ```text
-+----------------------------------+
-|  StoreHeader (black, sticky)     |
-+----------------------------------+
-|                                  |
-|  HERO SECTION                    |
-|  Store name + tagline            |
-|  [Shop Now] button               |
-|                                  |
-+----------------------------------+
-|                                  |
-|  PRODUCT SHOWCASE                |
-|  Featured products in a          |
-|  larger, editorial layout        |
-|                                  |
-+----------------------------------+
-|                                  |
-|  ABOUT SECTION                   |
-|  Brand story / mission text      |
-|                                  |
-+----------------------------------+
-|                                  |
-|  TESTIMONIALS                    |
-|  3 customer review cards         |
-|                                  |
-+----------------------------------+
-|  WhatsAppBar                     |
-+----------------------------------+
-|  StoreFooter                     |
-+----------------------------------+
++--------------------------------------------+
+| 🛍  Trysy                                  |
+| Try-before-you-buy for your storefront.    |
+|                                            |
+| [ Enable Trysy ]  ◯ off                    |
+|                                            |
+| Trysy Store ID                             |
+| [ f8cde913-77d3-4544-b9b7-137797797091 ]   |
+|                                            |
+| Trysy API Key                              |
+| [ trysy_live_•••••••••••••  👁 ]           |
+|                                            |
+| Trysy fee per order: ₹99 (fixed)           |
+|                                            |
+| [ Save ]    [ Disconnect ]                 |
++--------------------------------------------+
 ```
 
-### Files Changed
-- **Create**: `src/pages/StoreMyPage.tsx` (the full custom page)
-- **Edit**: `src/App.tsx` (route the `storemy` subdomain to the new page)
+- API key is masked by default, with a show/hide eye toggle.
+- "Save" stores credentials; "Disconnect" clears them and disables Trysy.
+- Small helper text: "Get these from your Trysy dashboard at trysy.lovable.app."
 
+### Data model
+
+New table `trysy_connections` (one per store):
+
+| Column | Type | Notes |
+|---|---|---|
+| id | uuid | PK |
+| store_id | uuid | unique, the store |
+| trysy_store_id | text | the UUID from Trysy |
+| trysy_api_key | text | sensitive, stored encrypted at rest by Supabase |
+| is_enabled | boolean | seller's on/off toggle |
+| trysy_fee | numeric | default 99 |
+| created_at / updated_at | timestamptz | |
+
+RLS: only the store's owner can view / insert / update / delete their row (same pattern as `shiprocket_connections`).
+
+### Files to add / change
+
+- **Create** `src/components/dashboard/TrysySettings.tsx` — the settings card UI.
+- **Create** `src/hooks/useTrysy.tsx` — fetch / save / disconnect hook (mirrors `useShiprocket`).
+- **Edit** `src/pages/Dashboard.tsx` — render `<TrysySettings />` in the settings area.
+- **Migration** — create `trysy_connections` table with RLS + `updated_at` trigger.
+
+### Out of scope (for later)
+
+- Embedding the Trysy `<script>` SDK on storefronts.
+- POSTing orders to `https://trysy.lovable.app/api/public/create-trysy-order` at checkout.
+- Showing Trysy status on the order list.
+
+Once this is approved I'll run the migration and build the UI.
