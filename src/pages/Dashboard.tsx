@@ -12,6 +12,7 @@ import { OrderList } from '@/components/dashboard/OrderList';
 import { ConfirmPayment } from '@/components/dashboard/ConfirmPayment';
 import { ShippingSettings } from '@/components/dashboard/ShippingSettings';
 import { PaymentSettings } from '@/components/dashboard/PaymentSettings';
+import { TrysySettings } from '@/components/dashboard/TrysySettings';
 import { useAuth } from '@/hooks/useAuth';
 import { useMyStore, useUpdateStore } from '@/hooks/useStore';
 import { supabase } from '@/integrations/supabase/client';
@@ -313,6 +314,10 @@ export default function Dashboard() {
 
             {/* Payment Settings */}
             <PaymentSettings store={store} />
+
+            {/* Trysy Connection */}
+            <TrysySettings store={store} />
+
 
             {/* Store Info Form */}
             <div className="bg-white/5 border border-white/10 rounded-2xl p-6">
