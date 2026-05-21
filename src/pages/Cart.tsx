@@ -24,6 +24,8 @@ export default function Cart() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [storeShippingInfo, setStoreShippingInfo] = useState<StoreShippingInfo | null>(null);
   const [customerPostalCode, setCustomerPostalCode] = useState('');
+  const [trysyOrderId, setTrysyOrderId] = useState<string | null>(null);
+  const externalOrderIdRef = useRef<string>(crypto.randomUUID());
 
   const itemsByStore = cart.reduce((acc, item) => {
     if (!acc[item.storeId]) {
