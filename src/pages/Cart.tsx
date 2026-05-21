@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Trash2, Minus, Plus, ShoppingBag, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -8,7 +8,7 @@ import { toast } from 'sonner';
 import { formatPrice } from '@/lib/currency';
 import { CheckoutForm, CheckoutFormData } from '@/components/checkout/CheckoutForm';
 import { CheckoutOrderSummary } from '@/components/checkout/CheckoutOrderSummary';
-import { TrysyCheckoutBadge } from '@/components/checkout/TrysyCheckoutBadge';
+import { TrysyCheckout } from '@/components/checkout/TrysyCheckout';
 import { useShippingRates, useStoreShiprocketStatus } from '@/hooks/useShippingRates';
 
 interface StoreShippingInfo {
@@ -24,6 +24,8 @@ export default function Cart() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [storeShippingInfo, setStoreShippingInfo] = useState<StoreShippingInfo | null>(null);
   const [customerPostalCode, setCustomerPostalCode] = useState('');
+  const [trysyOrderId, setTrysyOrderId] = useState<string | null>(null);
+  const externalOrderIdRef = useRef<string>(crypto.randomUUID());
 
   const itemsByStore = cart.reduce((acc, item) => {
     if (!acc[item.storeId]) {
@@ -159,6 +161,7 @@ export default function Cart() {
             customer_state: formData.state,
             customer_postal_code: formData.postalCode,
             customer_country: formData.country,
+            trysy_order_id: trysyOrderId,
           } as any);
 
         if (orderError) throw orderError;
@@ -251,7 +254,17 @@ export default function Cart() {
 
               {/* Right: Order Summary */}
               <div className="w-full lg:w-80 mb-6 lg:mb-0 space-y-4">
-                <TrysyCheckoutBadge storeId={firstStoreId} />
+                <TrysyCheckout
+                  storeId={firstStoreId}
+                  externalOrderId={externalOrderIdRef.current}
+                  products={cart.map((i) => ({
+                    product_name: i.productName,
+                    quantity: i.quantity,
+                    price: i.productPrice,
+                  }))}
+                  totalOrderValue={total}
+                  onOrderCreated={setTrysyOrderId}
+                />
                 <CheckoutOrderSummary 
                   cart={cart}
                   subtotal={total}

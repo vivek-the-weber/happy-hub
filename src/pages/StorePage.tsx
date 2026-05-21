@@ -7,7 +7,7 @@ import { CollectionTabs } from '@/components/store/CollectionTabs';
 import { StoreFooter } from '@/components/store/StoreFooter';
 import { WhatsAppBar } from '@/components/store/WhatsAppBar';
 import { ThemeToggle } from '@/components/store/ThemeToggle';
-import { TrysyEmbed } from '@/components/store/TrysyEmbed';
+
 import { useStoreBySlug, useStoreProducts, Product } from '@/hooks/useStore';
 import { useStoreCollections, useCollectionProducts } from '@/hooks/useCollections';
 
@@ -132,8 +132,6 @@ export default function StorePage({ subdomainSlug }: StorePageProps) {
       {/* Theme Toggle */}
       <ThemeToggle />
 
-      {/* Trysy SDK (loads only if seller has Trysy enabled) */}
-      <TrysyEmbed storeId={store.id} />
 
 
       <ProductDetailModal
