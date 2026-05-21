@@ -145,6 +145,7 @@ export type Database = {
           status: string
           store_id: string
           total_amount: number
+          trysy_order_id: string | null
           updated_at: string
         }
         Insert: {
@@ -170,6 +171,7 @@ export type Database = {
           status?: string
           store_id: string
           total_amount: number
+          trysy_order_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -195,6 +197,7 @@ export type Database = {
           status?: string
           store_id?: string
           total_amount?: number
+          trysy_order_id?: string | null
           updated_at?: string
         }
         Relationships: [

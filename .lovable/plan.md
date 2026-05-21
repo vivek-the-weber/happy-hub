@@ -1,61 +1,67 @@
-## Trysy connection settings for sellers
 
-Add a **Trysy** section to the seller Dashboard where each seller can connect their Trysy account by pasting their **Trysy Store ID** and **Trysy API Key**, and toggle Trysy on/off for their store. No runtime SDK injection or order forwarding yet — just the credentials UI + storage. Trysy fee is fixed at ₹99 for later use.
+## Wire up the real Trysy SDK on checkout
 
-### What the seller sees
+Now that we know the actual Trysy contract, replace the placeholder badge + broken SDK URL with a real working integration on the Cart checkout page.
 
-A new **Trysy** card on the Dashboard (next to Payment Settings / Shiprocket), styled in the existing glassmorphism look:
+### What's wrong today
+
+- `TrysyEmbed` loads `https://trysy.lovable.app/sdk.js` → 404. Correct URL is `https://trysy.lovable.app/api/public/sdk.js`.
+- `Trysy.init(...)` is called with just `{ storeId, apiKey }` — the real SDK needs `mount` + full `order` payload.
+- `TrysyEmbed` is mounted on `StorePage` (product browse), but Trysy belongs on **checkout**, not the storefront.
+- `TrysyCheckoutBadge` is just decorative — it doesn't actually render the Trysy try-at-home checkbox or post anything.
+
+### What I'll build
+
+A single real integration on the checkout step in `Cart.tsx`:
 
 ```text
-+--------------------------------------------+
-| 🛍  Trysy                                  |
-| Try-before-you-buy for your storefront.    |
++-- Checkout (right column) -----------------+
 |                                            |
-| [ Enable Trysy ]  ◯ off                    |
+|  [Order summary card]                      |
 |                                            |
-| Trysy Store ID                             |
-| [ f8cde913-77d3-4544-b9b7-137797797091 ]   |
+|  +-- Trysy mount ------------------------+ |
+|  |  ☐  Enable Trysy try-at-home (+₹99)  | |
+|  +--------------------------------------+ |
 |                                            |
-| Trysy API Key                              |
-| [ trysy_live_•••••••••••••  👁 ]           |
-|                                            |
-| Trysy fee per order: ₹99 (fixed)           |
-|                                            |
-| [ Save ]    [ Disconnect ]                 |
+|  [ Place Order ]                           |
 +--------------------------------------------+
 ```
 
-- API key is masked by default, with a show/hide eye toggle.
-- "Save" stores credentials; "Disconnect" clears them and disables Trysy.
-- Small helper text: "Get these from your Trysy dashboard at trysy.lovable.app."
+Flow:
 
-### Data model
+1. On entering checkout, fetch the seller's Trysy config via existing `get_trysy_public_config(p_store_id)` RPC. If disabled / missing → render nothing, behave exactly like today.
+2. If enabled → load `https://trysy.lovable.app/api/public/sdk.js` once, then call `Trysy.init({ storeId, apiKey, mount: '#trysy-mount', order: {...} })` with a draft order payload derived from the current cart:
+   - `external_order_id`: a stable client-generated UUID for this checkout attempt (reused across re-inits so replays hit the 409 idempotency path cleanly).
+   - `products`: mapped from `cart` items (`product_name`, `quantity`, `price`, `size` if available — we don't track size today, so omit).
+   - `total_order_value`: current `total`.
+   - `trysy_fee`: `99` (matches stored `trysy_fee` default).
+3. Re-init when cart total / items change so the SDK always has the latest payload (guard with a ref so we don't spam).
+4. Listen for `window` event `trysy:order-created` and stash the returned `trysy_order_id` on the order we insert into Supabase (see DB change below) so sellers can later see "this order is a Trysy order" in the dashboard.
 
-New table `trysy_connections` (one per store):
+### Cleanup
 
-| Column | Type | Notes |
-|---|---|---|
-| id | uuid | PK |
-| store_id | uuid | unique, the store |
-| trysy_store_id | text | the UUID from Trysy |
-| trysy_api_key | text | sensitive, stored encrypted at rest by Supabase |
-| is_enabled | boolean | seller's on/off toggle |
-| trysy_fee | numeric | default 99 |
-| created_at / updated_at | timestamptz | |
+- Delete `src/components/store/TrysyEmbed.tsx` and its usage in `StorePage.tsx` (wrong place, broken URL).
+- Delete `src/components/checkout/TrysyCheckoutBadge.tsx` and its usage in `Cart.tsx` (replaced by the real mount).
 
-RLS: only the store's owner can view / insert / update / delete their row (same pattern as `shiprocket_connections`).
+### Files
 
-### Files to add / change
+- **Create** `src/components/checkout/TrysyCheckout.tsx` — fetches config, loads SDK, renders `<div id="trysy-mount" />`, re-inits on cart changes, listens for `trysy:order-created`, exposes `trysyOrderId` + `onTrysyOrderCreated` via props/callback.
+- **Edit** `src/pages/Cart.tsx`:
+  - Replace `<TrysyCheckoutBadge />` with `<TrysyCheckout ... />` inside the checkout right column.
+  - Generate `externalOrderId` (UUID) once per checkout session via `useRef`.
+  - Pass cart-derived order payload down.
+  - When placing the order, include `trysy_order_id` (if any) in the `orders` insert.
+- **Edit** `src/pages/StorePage.tsx` — remove `<TrysyEmbed />` import + usage.
+- **Delete** `src/components/store/TrysyEmbed.tsx`, `src/components/checkout/TrysyCheckoutBadge.tsx`.
 
-- **Create** `src/components/dashboard/TrysySettings.tsx` — the settings card UI.
-- **Create** `src/hooks/useTrysy.tsx` — fetch / save / disconnect hook (mirrors `useShiprocket`).
-- **Edit** `src/pages/Dashboard.tsx` — render `<TrysySettings />` in the settings area.
-- **Migration** — create `trysy_connections` table with RLS + `updated_at` trigger.
+### DB change (small)
 
-### Out of scope (for later)
+Add a nullable `trysy_order_id text` column to `orders` so we can persist the ID the SDK returns. No RLS change needed (covered by existing `orders` policies).
 
-- Embedding the Trysy `<script>` SDK on storefronts.
-- POSTing orders to `https://trysy.lovable.app/api/public/create-trysy-order` at checkout.
-- Showing Trysy status on the order list.
+### Out of scope
 
-Once this is approved I'll run the migration and build the UI.
+- Server-side fallback POST to `/api/public/create-trysy-order` (the SDK handles it client-side; we'd only need this if we ever want guaranteed creation even when the SDK fails to load).
+- Showing Trysy status on the seller's order list UI (we'll store `trysy_order_id`, displaying it can be a follow-up).
+- Verifying the API key server-side (Trysy team's gap, not ours).
+
+Approve and I'll run the migration and ship the code.

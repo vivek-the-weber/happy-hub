@@ -1,0 +1,1 @@
+ALTER TABLE public.orders ADD COLUMN trysy_order_id text;
