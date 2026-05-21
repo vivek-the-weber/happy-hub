@@ -132,8 +132,6 @@ export default function StorePage({ subdomainSlug }: StorePageProps) {
       {/* Theme Toggle */}
       <ThemeToggle />
 
-      {/* Trysy SDK (loads only if seller has Trysy enabled) */}
-      <TrysyEmbed storeId={store.id} />
 
 
       <ProductDetailModal
