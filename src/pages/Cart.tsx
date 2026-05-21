@@ -253,7 +253,17 @@ export default function Cart() {
 
               {/* Right: Order Summary */}
               <div className="w-full lg:w-80 mb-6 lg:mb-0 space-y-4">
-                <TrysyCheckoutBadge storeId={firstStoreId} />
+                <TrysyCheckout
+                  storeId={firstStoreId}
+                  externalOrderId={externalOrderIdRef.current}
+                  products={cart.map((i) => ({
+                    product_name: i.productName,
+                    quantity: i.quantity,
+                    price: i.productPrice,
+                  }))}
+                  totalOrderValue={total}
+                  onOrderCreated={setTrysyOrderId}
+                />
                 <CheckoutOrderSummary 
                   cart={cart}
                   subtotal={total}
